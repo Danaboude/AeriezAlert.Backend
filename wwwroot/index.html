@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aeriez Alert Dashboard</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f0f2f5;
+            margin: 0;
+            padding: 40px 20px;
+            color: #333;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+
+        .logo {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            border: 4px solid #1e45F3;
+            padding: 5px;
+            background: #1e45F3;
+            object-fit: contain;
+            box-shadow: 0 4px 15px rgba(30, 69, 243, 0.2);
+            margin-right: 20px;
+        }
+
+        h1 {
+            color: #1e45F3;
+            margin: 0;
+            font-size: 2.5rem;
+            letter-spacing: -1px;
+        }
+
+        h2 {
+            color: #333;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 10px;
+            margin-top: 0;
+        }
+
+        .card {
+            background: white;
+            padding: 30px;
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+            margin-bottom: 30px;
+            transition: transform 0.2s;
+        }
+
+        .card:hover {
+            transform: translateY(-2px);
+        }
+
+        button {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-right: 10px;
+            margin-top: 10px;
+            transition: all 0.3s;
+            font-weight: 600;
+        }
+
+        .btn-primary {
+            background: #1e45F3;
+            color: white;
+            box-shadow: 0 4px 10px rgba(30, 69, 243, 0.3);
+        }
+
+        .btn-primary:hover {
+            background: #1532b0;
+            box-shadow: 0 6px 15px rgba(30, 69, 243, 0.4);
+        }
+
+        .btn-success {
+            background: #00c853;
+            color: white;
+            box-shadow: 0 4px 10px rgba(0, 200, 83, 0.3);
+        }
+
+        .btn-success:hover {
+            background: #00a844;
+        }
+
+        .btn-danger {
+            background: #ff3d00;
+            color: white;
+            box-shadow: 0 4px 10px rgba(255, 61, 0, 0.3);
+        }
+
+        .btn-danger:hover {
+            background: #d32f2f;
+        }
+
+        input,
+        select,
+        textarea {
+            width: 100%;
+            padding: 12px 15px;
+            margin: 10px 0 20px;
+            border: 2px solid #eee;
+            border-radius: 8px;
+            box-sizing: border-box;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+
+        input:focus,
+        textarea:focus {
+            border-color: #1e45F3;
+            outline: none;
+        }
+
+        label {
+            font-weight: 600;
+            color: #555;
+            display: block;
+            margin-top: 10px;
+        }
+
+        .status-container {
+            display: inline-flex;
+            align-items: center;
+            background: #f8f9fa;
+            padding: 8px 15px;
+            border-radius: 30px;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+
+        .on {
+            background: #00c853;
+            box-shadow: 0 0 10px #00c853;
+        }
+
+        .off {
+            background: #ff3d00;
+        }
+
+        pre {
+            background: #2d3436;
+            color: #dfe6e9;
+            padding: 15px;
+            border-radius: 8px;
+            overflow-x: auto;
+        }
+
+        .checkbox-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .checkbox-container input {
+            width: auto;
+            margin: 0;
+        }
+
+        .checkbox-container label {
+            margin: 0;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="header">
+            <img src="logo.png" alt="Logo" class="logo">
+            <h1>Aeriez Alert Dashboard</h1>
+        </div>
+
+        <!-- Daemon Control -->
+        <div class="card">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <h2>Daemon Control</h2>
+                <div class="status-container" id="daemonStatus">
+                    <span class="status-indicator off" id="statusDot"></span>
+                    <span id="statusText">Stopped</span>
+                </div>
+            </div>
+            <p style="color: #666; margin-bottom: 20px;">
+                The daemon simulates checking for new tickets every 15 seconds. If running, it will randomly generate
+                "New Ticket" alerts and send them to the test user.
+            </p>
+            <button onclick="startDaemon()" class="btn-success">Start Daemon</button>
+            <button onclick="stopDaemon()" class="btn-danger">Stop Daemon</button>
+        </div>
+
+        <!-- Notification Sender -->
+        <div class="card">
+            <h2>Send Manual Notification</h2>
+            <label>Topic</label>
+            <input type="text" id="topic" placeholder="e.g. company/acme/user/user123"
+                value="company/acme/user/user123">
+
+            <label>Title</label>
+            <input type="text" id="title" placeholder="Notification Title" value="Hello World">
+
+            <div class="checkbox-container" style="margin-bottom: 15px;">
+                <input type="checkbox" id="useTicketFormat" checked>
+                <label for="useTicketFormat">Send as structured JSON object (Title/Body)</label>
+            </div>
+
+            <label>Body</label>
+            <textarea id="body" rows="3"
+                placeholder="Notification Body">This is a test notification from the dashboard.</textarea>
+
+            <button onclick="sendNotification()" class="btn-primary">Send Notification</button>
+        </div>
+
+        <!-- User Lookup Tool -->
+        <div class="card">
+            <h2>User Database Lookup</h2>
+            <label>Phone Number</label>
+            <div style="display: flex; gap: 10px;">
+                <input type="text" id="phoneLookup" placeholder="e.g. 1234567890" style="margin-bottom: 0;">
+                <button onclick="lookupUser()" class="btn-primary"
+                    style="margin: 0; white-space: nowrap;">Search</button>
+            </div>
+            <div id="lookupResultWrapper" style="display: none; margin-top: 20px;">
+                <label>User Details:</label>
+                <pre id="lookupResult"></pre>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:3001/api';
+
+        async function updateStatus() {
+            try {
+                const res = await fetch(`${API_BASE}/daemon/status`);
+                const data = await res.json();
+                const isRunning = data.isRunning;
+                const dot = document.getElementById('statusDot');
+                const text = document.getElementById('statusText');
+
+                if (isRunning) {
+                    dot.className = 'status-indicator on';
+                    text.innerText = 'Running';
+                } else {
+                    dot.className = 'status-indicator off';
+                    text.innerText = 'Stopped';
+                }
+            } catch (e) {
+                console.error("Failed to fetch daemon status:", e);
+                const dot = document.getElementById('statusDot');
+                const text = document.getElementById('statusText');
+                dot.className = 'status-indicator off';
+                text.innerText = 'Error';
+            }
+        }
+
+        async function startDaemon() {
+            try {
+                await fetch(`${API_BASE}/daemon/start`, { method: 'POST' });
+                updateStatus();
+            } catch (e) {
+                console.error("Failed to start daemon:", e);
+                alert('Error starting daemon');
+            }
+        }
+
+        async function stopDaemon() {
+            try {
+                await fetch(`${API_BASE}/daemon/stop`, { method: 'POST' });
+                updateStatus();
+            } catch (e) {
+                console.error("Failed to stop daemon:", e);
+                alert('Error stopping daemon');
+            }
+        }
+
+        async function sendNotification() {
+            const topic = document.getElementById('topic').value;
+            const title = document.getElementById('title').value;
+            const body = document.getElementById('body').value;
+            const useTicketFormat = document.getElementById('useTicketFormat').checked;
+
+            let message;
+
+            if (useTicketFormat) {
+                message = {
+                    title: title,
+                    body: body
+                };
+            } else {
+                message = body; // Send raw string if unchecked (or adjust based on need)
+                // actually backend might expect object if C# Controller type is Object.
+                // let's wrap it in object still but with just one field if needed? 
+                // Whatever, let's stick to the JSON format as default.
+                // If raw, maybe send just string?
+                // But NotificationController expects { topic, message: object }.
+                // If we send string here, C# will serialize it as string.
+                message = body;
+            }
+
+            try {
+                const res = await fetch(`${API_BASE}/notify`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ topic, message })
+                });
+
+                if (res.ok) alert('Notification sent!');
+                else alert('Failed to send notification');
+            } catch (e) {
+                alert('Error sending notification');
+            }
+        }
+
+        async function lookupUser() {
+            const phone = document.getElementById('phoneLookup').value;
+            const resultWrapper = document.getElementById('lookupResultWrapper');
+            const resultPre = document.getElementById('lookupResult');
+
+            try {
+                const res = await fetch(`${API_BASE}/auth/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ phoneNumber: phone })
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    resultPre.innerText = JSON.stringify(data, null, 2);
+                    resultWrapper.style.display = 'block';
+                } else {
+                    resultPre.innerText = "User Not Found";
+                    resultWrapper.style.display = 'block';
+                }
+            } catch (e) {
+                resultPre.innerText = "Error connecting to server";
+                resultWrapper.style.display = 'block';
+            }
+        }
+
+        // Initial check
+        updateStatus();
+        setInterval(updateStatus, 3000);
+    </script>
+</body>
+
+</html>

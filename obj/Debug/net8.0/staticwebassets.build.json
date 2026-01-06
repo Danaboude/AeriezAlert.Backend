@@ -1,0 +1,58 @@
+{
+  "Version": 1,
+  "Hash": "XzNFnuuouIikAZeeJ+Hn15tLE0XCt5GNMbyDujJ6CKQ=",
+  "Source": "AeriezAlert.Backend",
+  "BasePath": "_content/AeriezAlert.Backend",
+  "Mode": "Default",
+  "ManifestType": "Build",
+  "ReferencedProjectsConfiguration": [],
+  "DiscoveryPatterns": [
+    {
+      "Name": "AeriezAlert.Backend\\wwwroot",
+      "Source": "AeriezAlert.Backend",
+      "ContentRoot": "D:\\example\\porjects\\mttq\\aeriez_alart\\backend_csharp\\AeriezAlert.Backend\\wwwroot\\",
+      "BasePath": "_content/AeriezAlert.Backend",
+      "Pattern": "**"
+    }
+  ],
+  "Assets": [
+    {
+      "Identity": "D:\\example\\porjects\\mttq\\aeriez_alart\\backend_csharp\\AeriezAlert.Backend\\wwwroot\\index.html",
+      "SourceId": "AeriezAlert.Backend",
+      "SourceType": "Discovered",
+      "ContentRoot": "D:\\example\\porjects\\mttq\\aeriez_alart\\backend_csharp\\AeriezAlert.Backend\\wwwroot\\",
+      "BasePath": "_content/AeriezAlert.Backend",
+      "RelativePath": "index.html",
+      "AssetKind": "All",
+      "AssetMode": "All",
+      "AssetRole": "Primary",
+      "AssetMergeBehavior": "PreferTarget",
+      "AssetMergeSource": "",
+      "RelatedAsset": "",
+      "AssetTraitName": "",
+      "AssetTraitValue": "",
+      "CopyToOutputDirectory": "Never",
+      "CopyToPublishDirectory": "PreserveNewest",
+      "OriginalItemSpec": "wwwroot\\index.html"
+    },
+    {
+      "Identity": "D:\\example\\porjects\\mttq\\aeriez_alart\\backend_csharp\\AeriezAlert.Backend\\wwwroot\\logo.png",
+      "SourceId": "AeriezAlert.Backend",
+      "SourceType": "Discovered",
+      "ContentRoot": "D:\\example\\porjects\\mttq\\aeriez_alart\\backend_csharp\\AeriezAlert.Backend\\wwwroot\\",
+      "BasePath": "_content/AeriezAlert.Backend",
+      "RelativePath": "logo.png",
+      "AssetKind": "All",
+      "AssetMode": "All",
+      "AssetRole": "Primary",
+      "AssetMergeBehavior": "PreferTarget",
+      "AssetMergeSource": "",
+      "RelatedAsset": "",
+      "AssetTraitName": "",
+      "AssetTraitValue": "",
+      "CopyToOutputDirectory": "Never",
+      "CopyToPublishDirectory": "PreserveNewest",
+      "OriginalItemSpec": "wwwroot\\logo.png"
+    }
+  ]
+}

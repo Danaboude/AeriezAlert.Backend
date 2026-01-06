@@ -1,0 +1,29 @@
+{
+  "Files": [
+    {
+      "Id": "D:\\example\\porjects\\mttq\\aeriez_alart\\backend_csharp\\AeriezAlert.Backend\\wwwroot\\index.html",
+      "PackagePath": "staticwebassets\\index.html"
+    },
+    {
+      "Id": "D:\\example\\porjects\\mttq\\aeriez_alart\\backend_csharp\\AeriezAlert.Backend\\wwwroot\\logo.png",
+      "PackagePath": "staticwebassets\\logo.png"
+    },
+    {
+      "Id": "obj\\Debug\\net8.0\\staticwebassets\\msbuild.AeriezAlert.Backend.Microsoft.AspNetCore.StaticWebAssets.props",
+      "PackagePath": "build\\Microsoft.AspNetCore.StaticWebAssets.props"
+    },
+    {
+      "Id": "obj\\Debug\\net8.0\\staticwebassets\\msbuild.build.AeriezAlert.Backend.props",
+      "PackagePath": "build\\AeriezAlert.Backend.props"
+    },
+    {
+      "Id": "obj\\Debug\\net8.0\\staticwebassets\\msbuild.buildMultiTargeting.AeriezAlert.Backend.props",
+      "PackagePath": "buildMultiTargeting\\AeriezAlert.Backend.props"
+    },
+    {
+      "Id": "obj\\Debug\\net8.0\\staticwebassets\\msbuild.buildTransitive.AeriezAlert.Backend.props",
+      "PackagePath": "buildTransitive\\AeriezAlert.Backend.props"
+    }
+  ],
+  "ElementsToRemove": []
+}
