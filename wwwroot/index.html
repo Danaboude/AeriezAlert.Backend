@@ -249,7 +249,8 @@
     </div>
 
     <script>
-        const API_BASE = 'http://localhost:3001/api';
+        // Use relative path so it works on both localhost and deployed URL
+        const API_BASE = '/api';
 
         async function updateStatus() {
             try {
