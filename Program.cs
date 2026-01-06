@@ -13,7 +13,7 @@ builder.Services.AddSingleton<UserLookupService>();
 builder.Services.AddSingleton<DaemonService>();
 builder.Services.AddHostedService(provider => provider.GetRequiredService<DaemonService>());
 
-// CORS policy to allow calls from Flutter web (if applicable) or other clients
+// CORS policy to allow calls 
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", builder =>

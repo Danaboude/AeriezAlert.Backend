@@ -12,10 +12,10 @@ public class MqttService : IDisposable
     private readonly ILogger<MqttService> _logger;
 
     // Hardcoded credentials as per prompt (usually should be in appsettings)
-    private const string BrokerUrl = "ostrich.lmq.cloudamqp.com";
+    private const string BrokerUrl = "goose.rmq2.cloudamqp.com";
     private const int BrokerPort = 8883;
-    private const string Username = "shporlek:shporlek";
-    private const string Password = "1Q5wCZyc3iCOw5TLI1M-lFwjVdM86NGa";
+    private const string Username = "mjzobrvj:mjzobrvj";
+    private const string Password = "6Nny-gtuyC5e7bNn1s599fgKDrCUy_8d";
 
     public MqttService(ILogger<MqttService> logger)
     {
