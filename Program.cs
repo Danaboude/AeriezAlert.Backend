@@ -2,6 +2,13 @@ using AeriezAlert.Backend.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Reduce noise in logs
+builder.Logging.ClearProviders();
+builder.Logging.AddConsole();
+builder.Logging.AddFilter("Microsoft", LogLevel.Warning);
+builder.Logging.AddFilter("System", LogLevel.Warning);
+builder.Logging.AddFilter("AeriezAlert", LogLevel.Information); // Keep our app logs visible
+
 // Add services to the container.
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
