@@ -6,6 +6,7 @@ public class DaemonService : BackgroundService
 {
     private readonly ILogger<DaemonService> _logger;
     private readonly MqttService _mqttService;
+    private readonly IServiceProvider _serviceProvider;
     
     // Polling configuration
     private const int PollingIntervalMs = 15000;
@@ -14,10 +15,11 @@ public class DaemonService : BackgroundService
 
     public bool IsRunning => _isRunning;
 
-    public DaemonService(ILogger<DaemonService> logger, MqttService mqttService)
+    public DaemonService(ILogger<DaemonService> logger, MqttService mqttService, IServiceProvider serviceProvider)
     {
         _logger = logger;
         _mqttService = mqttService;
+        _serviceProvider = serviceProvider;
     }
 
     public void StartPolling()
@@ -62,41 +64,99 @@ public class DaemonService : BackgroundService
         _isPolling = true;
         try
         {
-             // Mock polling logic similar to the JS daemon
-            _logger.LogInformation("Polling for new tickets...");
+            _logger.LogInformation("--- [Mock Middleware Cycle Start] ---");
 
-            // Simulate finding a ticket with 30% chance per poll cycle
-            var random = new Random();
-            if (random.NextDouble() < 0.3) 
+            // 1. Define Mock Input List (Mixed valid and invalid users)
+            // In production, this comes from your API source.
+            var mockInputList = new List<PhonesPings>
             {
-                var ticketId = random.Next(1000, 9999);
-                var isNew = random.NextDouble() > 0.5;
-                var status = isNew ? "New Ticket Opened" : "Ticket Closed";
-                var body = isNew 
-                    ? $"A new ticket #{ticketId} has been assigned to you." 
-                    : $"Ticket #{ticketId} has been closed.";
+                new PhonesPings { Email = "user1@acme.com" }, // Valid (Mock DB)
+                new PhonesPings { Email = "unknown@test.com" }, // Invalid
+                new PhonesPings { PhoneNumber = "1234567890" } // Invalid/Unknown
+            };
 
-                _logger.LogInformation($"[Mock] Found update: {status}");
+            _logger.LogInformation($"1. Input List: {mockInputList.Count} entries.");
 
-                // In a real app, we would fetch recipients. Here we mock sending to our test user.
-                // We'll send to the specific test user 'user1@acme.com' used in the frontend default.
-                // Or we can make this configurable, but for now we follow the "identifier" pattern.
-                var targetIdentifier = "user1@acme.com";
-                // Topic format: user/{identifier with . replaced by /}
-                // e.g. user/user1@acme/com
-                
-                var safeIdentifier = targetIdentifier.Replace(".", "/");
-                var topic = $"user/{safeIdentifier}";
-                
-                var message = new 
+            using (var scope = _serviceProvider.CreateScope())
+            {
+                var phoneService = scope.ServiceProvider.GetRequiredService<PhoneNotificationService>();
+
+                // 2. Step 1: Ping / CheckPhones
+                // "The API will then return a ConnectionPingResult."
+                var pingResult = phoneService.CheckPhones(mockInputList);
+
+                _logger.LogInformation($"2. Ping Result: {pingResult.Phones.Count} checked.");
+
+                // 3. Step 2: Handle Unknowns & Filter
+                // "You should send a notification to the unknown phones... filter out the None and Unknown"
+                var validUsers = new List<PhonesPings>();
+
+                foreach (var phoneResult in pingResult.Phones)
                 {
-                    title = status,
-                    body = body
-                };
+                    var identifier = !string.IsNullOrEmpty(phoneResult.Email) ? phoneResult.Email : phoneResult.PhoneNumber;
 
-                await _mqttService.PublishAsync(topic, message);
-                _logger.LogInformation($"[Mock] Notification sent to {topic}");
+                    if (phoneResult.Check == PhonesPingsAnswer.Unknown || phoneResult.Check == PhonesPingsAnswer.None)
+                    {
+                        // Mock "Sending Invite"
+                        _logger.LogWarning($"   -> [Unknown User] Sending SMS/Invite to: {identifier}");
+                    }
+                    else if (phoneResult.Check == PhonesPingsAnswer.notification)
+                    {
+                        // Known user, add to filter list
+                        validUsers.Add(new PhonesPings 
+                        { 
+                            Email = phoneResult.Email, 
+                            PhoneNumber = phoneResult.PhoneNumber 
+                        });
+                        _logger.LogInformation($"   -> [Known User] Added to valid list: {identifier}");
+                    }
+                }
+
+                if (validUsers.Count == 0)
+                {
+                     _logger.LogInformation("3. No valid users found to notify.");
+                }
+                else
+                {
+                    // 4. Step 3: Get Notifications for Knowns
+                    // "send a new request with the filtered numbers... receive a PhoneWithNotificationResult"
+                    _logger.LogInformation($"3. Requesting notifications for {validUsers.Count} valid users...");
+                    
+                    var notificationResult = phoneService.GetNotificationsGlobal(validUsers);
+
+                    // 5. Step 4: Publish MQTT
+                    // "send notifications to all remaining phones"
+                    var random = new Random();
+                    foreach (var pwn in notificationResult.PhonesWithNotifications)
+                    {
+                        var identifier = !string.IsNullOrEmpty(pwn.Email) ? pwn.Email : pwn.PhoneNumber;
+                        
+                        // Simulate a message if we "have" one (Random chance for demo)
+                        if (random.NextDouble() < 0.5) 
+                        {
+                            var topicIdentifier = identifier.Replace(".", "/");
+                            var topic = $"user/{topicIdentifier}";
+                            
+                            var body = $"Hello {identifier}, you have a new task!";
+                            var message = new 
+                            {
+                                title = "New Workflow Task",
+                                body = body,
+                                imageUrl = "https://picsum.photos/200", // Demo Image
+                                actionUrl = "https://google.com"
+                            };
+
+                            await _mqttService.PublishAsync(topic, message);
+                            _logger.LogInformation($"4. [MQTT] Published to {topic}");
+                        }
+                        else
+                        {
+                            _logger.LogInformation($"4. [No New Message] for {identifier}");
+                        }
+                    }
+                }
             }
+             _logger.LogInformation("--- [Mock Middleware Cycle End] ---");
         }
         catch (Exception ex)
         {
@@ -105,8 +165,6 @@ public class DaemonService : BackgroundService
         finally
         {
             _isPolling = false;
-            // Wait for the rest of the interval
-        
             await Task.Delay(PollingIntervalMs);
         }
     }
