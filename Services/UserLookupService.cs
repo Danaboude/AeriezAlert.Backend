@@ -15,25 +15,19 @@ public class UserLookupService
             {
                 Email = "user1@acme.com",
                 PhoneNumber = "1234567890",
-                CompanyId = "acme",
-                UserId = "user123",
-                GroupIds = new List<string> { "group-a", "group-b" }
+                UserId = "user1"
             },
             new User
             {
                 Email = "user2@acme.com",
                 PhoneNumber = "0987654321",
-                CompanyId = "acme",
-                UserId = "user456",
-                GroupIds = new List<string> { "group-c" }
+                UserId = "user2"
             },
             new User
             {
                 Email = "admin@beta.com",
                 PhoneNumber = "5555555555",
-                CompanyId = "beta",
-                UserId = "user789",
-                GroupIds = new List<string> { "all-staff" }
+                UserId = "admin"
             }
         };
     }
@@ -46,5 +40,10 @@ public class UserLookupService
     public User? GetUserByPhone(string phoneNumber)
     {
         return _users.FirstOrDefault(u => u.PhoneNumber.Equals(phoneNumber, StringComparison.OrdinalIgnoreCase));
+    }
+
+    public IEnumerable<User> GetAllUsers()
+    {
+        return _users;
     }
 }

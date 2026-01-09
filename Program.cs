@@ -9,7 +9,7 @@ builder.Services.AddSwaggerGen();
 
 // Register Custom Services
 builder.Services.AddSingleton<MqttService>();
-// builder.Services.AddSingleton<UserLookupService>(); // Removed
+builder.Services.AddSingleton<UserLookupService>();
 builder.Services.AddSingleton<PhoneNotificationService>();
 builder.Services.AddSingleton<DaemonService>();
 builder.Services.AddHostedService(provider => provider.GetRequiredService<DaemonService>());

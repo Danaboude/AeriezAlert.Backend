@@ -230,6 +230,9 @@
             <label>Action URL (Optional)</label>
             <input type="text" id="actionUrl" placeholder="https://flutter.dev">
 
+            <label>Image URL (Optional)</label>
+            <input type="text" id="imageUrl" placeholder="https://via.placeholder.com/150">
+
             <!-- Image Upload Removed -->
 
             <button onclick="sendNotification()" class="btn-primary">Send Notification</button>
@@ -248,6 +251,23 @@
             <div id="pingResultWrapper" style="display: none; margin-top: 20px;">
                 <label>Result:</label>
                 <pre id="pingResult"></pre>
+            </div>
+        </div>
+
+        <!-- Registered Users Status Panel -->
+        <div class="card">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <h2>Registered Users Status</h2>
+                <button onclick="loadUsers()" class="btn-primary"
+                    style="margin: 0; padding: 5px 10px; font-size: 12px;">Refresh</button>
+            </div>
+            <p style="color: #666;">List of known users from the mock database. Use Ping Test to check online status.
+            </p>
+            <div id="usersList"
+                style="margin-top: 15px; display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px;">
+                <!-- User items will be injected here -->
+                <div style="padding: 10px; background: #f5f5f5; border-radius: 6px; text-align: center;">Loading...
+                </div>
             </div>
         </div>
 
@@ -334,6 +354,7 @@
             const title = document.getElementById('title').value;
             const body = document.getElementById('body').value;
             const actionUrl = document.getElementById('actionUrl').value;
+            const imageUrl = document.getElementById('imageUrl').value;
             const useTicketFormat = document.getElementById('useTicketFormat').checked;
 
             let message;
@@ -342,7 +363,8 @@
                 message = {
                     title: title,
                     body: body,
-                    actionUrl: actionUrl ? actionUrl : null
+                    actionUrl: actionUrl ? actionUrl : null,
+                    imageUrl: imageUrl ? imageUrl : null
                 };
             } else {
                 message = body;
@@ -423,9 +445,50 @@
 
         // uploadImage function removed
 
+        async function loadUsers() {
+            const list = document.getElementById('usersList');
+            try {
+                const res = await fetch(`${API_BASE}/auth/users`);
+                if (res.ok) {
+                    const users = await res.json();
+                    list.innerHTML = '';
+                    if (users.length === 0) list.innerHTML = '<div style="padding:10px;">No users found</div>';
+
+                    users.forEach(u => {
+                        const item = document.createElement('div');
+                        item.style.padding = '10px';
+                        item.style.background = '#fff';
+                        item.style.border = '1px solid #ddd';
+                        item.style.borderRadius = '6px';
+                        item.innerHTML = `
+                            <strong>${u.userId || 'Unknown'}</strong><br/>
+                            <small>${u.email || ''}</small><br/>
+                            <small>${u.phoneNumber || ''}</small>
+                        `;
+                        // Click to populate inputs
+                        item.onclick = () => {
+                            const id = u.email || u.phoneNumber;
+                            document.getElementById('targetIdentifier').value = id;
+                            document.getElementById('pingIdentifier').value = id;
+                        };
+                        item.style.cursor = 'pointer';
+                        item.title = "Click to select";
+                        list.appendChild(item);
+                    });
+                } else {
+                    list.innerHTML = 'Failed to load users';
+                }
+            } catch (e) {
+                list.innerHTML = 'Error loading users';
+            }
+        }
+
         // Initial check
-        updateStatus();
-        setInterval(updateStatus, 3000);
+        window.addEventListener('load', () => {
+            updateStatus();
+            setInterval(updateStatus, 3000);
+            loadUsers();
+        });
     </script>
 </body>
 

@@ -7,6 +7,12 @@ namespace AeriezAlert.Backend.Services
         // In-memory store for connected/registered users
         // Key: Identifier (Email or Phone)
         private readonly HashSet<string> _registeredUsers = new();
+        private readonly IServiceProvider _serviceProvider;
+
+        public PhoneNotificationService(IServiceProvider serviceProvider)
+        {
+            _serviceProvider = serviceProvider;
+        }
 
         public void RegisterUser(string identifier)
         {
@@ -23,37 +29,53 @@ namespace AeriezAlert.Backend.Services
         {
             var result = new ConnectionPingResult();
             
-            foreach (var input in inputPhones)
+            // Resolve scope to get UserLookupService (it's a Singleton but good practice to resolve if needed, though here we can likely inject directly if registered as Singleton)
+            // Since we are in a Singleton service, and UserLookupService is Singleton, we can inject it in constructor. 
+            // However, to avoid circular deps if any (there aren't yet), let's use provider or just inject it.
+            // Let's use direct injection in constructor for simplicity if possible. 
+            // But wait, I'm editing the class structure. I'll just use the provider pattern or better yet, change constructor.
+            
+            using (var scope = _serviceProvider.CreateScope())
             {
-                var identifier = !string.IsNullOrEmpty(input.Email) ? input.Email : input.PhoneNumber;
-                
-                var response = new PhonesPings
-                {
-                    Email = input.Email,
-                    PhoneNumber = input.PhoneNumber
-                };
+                var userLookup = scope.ServiceProvider.GetRequiredService<UserLookupService>();
 
-                bool isRegistered;
-                lock(_registeredUsers)
+                foreach (var input in inputPhones)
                 {
-                    isRegistered = _registeredUsers.Contains(identifier);
-                }
+                    var identifier = !string.IsNullOrEmpty(input.Email) ? input.Email : input.PhoneNumber;
+                    
+                    var response = new PhonesPings
+                    {
+                        Email = input.Email,
+                        PhoneNumber = input.PhoneNumber
+                    };
 
-                if (!isRegistered)
-                {
-                    response.Check = PhonesPingsAnswer.Unknown;
+                    if (string.IsNullOrEmpty(identifier))
+                    {
+                        response.Check = PhonesPingsAnswer.Unknown;
+                        result.Phones.Add(response);
+                        continue;
+                    }
+
+                    // 1. Check if user exists in our "Database"
+                    var user = identifier.Contains("@") 
+                        ? userLookup.GetUserByEmail(identifier) 
+                        : userLookup.GetUserByPhone(identifier);
+
+                    if (user == null)
+                    {
+                        // User does not exist in our system -> Unknown
+                        response.Check = PhonesPingsAnswer.Unknown;
+                    }
+                    else
+                    {
+                        // User exists. Return 'notification' (meaning "Known/Available")
+                        // In the future, we might split this into "Online" vs "KnownButOffline". 
+                        // For now, "notification" implies known valid user.
+                        response.Check = PhonesPingsAnswer.notification;
+                    }
+                    
+                    result.Phones.Add(response);
                 }
-                else
-                {
-                    // Logic for "notification" vs "none" could depend on if there are pending notifications
-                    // For now, if they are online, assume we can send notifications or they are ready.
-                    // The prompt implies "Notification" might mean "User exists and we want to notify them" 
-                    // or "User exists and has notifications".
-                    // Let's assume if registered, we return 'notification' (meaning available to receive).
-                    response.Check = PhonesPingsAnswer.notification;
-                }
-                
-                result.Phones.Add(response);
             }
 
             return result;

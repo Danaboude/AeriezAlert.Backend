@@ -29,8 +29,8 @@ namespace AeriezAlert.Backend.Models
 
     public class PhonesPings
     {
-        public string Email { get; set; } = string.Empty;
-        public string PhoneNumber { get; set; } = string.Empty;
+        public string? Email { get; set; }
+        public string? PhoneNumber { get; set; }
         public PhonesPingsAnswer Check { get; set; }
     }
 
