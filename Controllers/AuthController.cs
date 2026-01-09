@@ -30,9 +30,10 @@ public class AuthController : ControllerBase
         // For compatibility with frontend that expects a User object, we return a mock one.
         var user = new User 
         { 
-            Name = request.Identifier, 
+            // Map Identifier to UserId as a display name equivalent
+            UserId = request.Identifier, 
             Email = request.Identifier.Contains("@") ? request.Identifier : null,
-            Phone = !request.Identifier.Contains("@") ? request.Identifier : null
+            PhoneNumber = !request.Identifier.Contains("@") ? request.Identifier : null
         };
         
         return Ok(user);

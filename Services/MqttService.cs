@@ -38,10 +38,10 @@ public class MqttService : IDisposable
 
     public async Task ConnectAsync()
     {
-        var brokerUrl = _configuration["MqttSettings:BrokerUrl"] ?? "localhost";
-        var brokerPort = int.Parse(_configuration["MqttSettings:BrokerPort"] ?? "1883");
-        var username = _configuration["MqttSettings:Username"] ?? "guest";
-        var password = _configuration["MqttSettings:Password"] ?? "guest";
+        var brokerUrl = _configuration["MqttSettingsBrokerUrl"] ?? "localhost";
+        var brokerPort = int.Parse(_configuration["MqttSettingsBrokerPort"] ?? "1883");
+        var username = _configuration["MqttSettingsUsername"] ?? "guest";
+        var password = _configuration["MqttSettingsPassword"] ?? "guest";
 
         var clientOptionsBuilder = new MqttClientOptionsBuilder()
             .WithTcpServer(brokerUrl, brokerPort)

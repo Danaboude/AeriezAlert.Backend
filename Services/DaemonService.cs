@@ -6,7 +6,6 @@ public class DaemonService : BackgroundService
 {
     private readonly ILogger<DaemonService> _logger;
     private readonly MqttService _mqttService;
-    private readonly UserLookupService _userLookup;
     
     // Polling configuration
     private const int PollingIntervalMs = 15000;
@@ -15,11 +14,10 @@ public class DaemonService : BackgroundService
 
     public bool IsRunning => _isRunning;
 
-    public DaemonService(ILogger<DaemonService> logger, MqttService mqttService, UserLookupService userLookup)
+    public DaemonService(ILogger<DaemonService> logger, MqttService mqttService)
     {
         _logger = logger;
         _mqttService = mqttService;
-        _userLookup = userLookup;
     }
 
     public void StartPolling()
