@@ -95,7 +95,7 @@ public class DaemonService : BackgroundService
                 {
                     var identifier = !string.IsNullOrEmpty(phoneResult.Email) ? phoneResult.Email : phoneResult.PhoneNumber;
 
-                    if (phoneResult.Check == PhonesPingsAnswer.Unknown || phoneResult.Check == PhonesPingsAnswer.None)
+                    if (phoneResult.Check == PhonesPingsAnswer.Unknown || phoneResult.Check == PhonesPingsAnswer.none)
                     {
                         // Mock "Sending Invite"
                         _logger.LogWarning($"   -> [Unknown User] Sending SMS/Invite to: {identifier}");

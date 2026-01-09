@@ -93,8 +93,8 @@ namespace AeriezAlert.Backend.Services
                  
                  var pwn = new PhoneWithNotifications
                  {
-                     Email = input.Email,
-                     PhoneNumber = input.PhoneNumber,
+                     Email = input.Email ?? string.Empty,
+                     PhoneNumber = input.PhoneNumber ?? string.Empty,
                      Notifications = new List<Notification>()
                  };
                  // Add logic here if we have queued notifications
