@@ -13,6 +13,7 @@ public class UserLookupService
         {
             new User
             {
+                Email = "user1@acme.com",
                 PhoneNumber = "1234567890",
                 CompanyId = "acme",
                 UserId = "user123",
@@ -20,13 +21,15 @@ public class UserLookupService
             },
             new User
             {
-                PhoneNumber = "9876543210",
+                Email = "user2@acme.com",
+                PhoneNumber = "0987654321",
                 CompanyId = "acme",
                 UserId = "user456",
                 GroupIds = new List<string> { "group-c" }
             },
             new User
             {
+                Email = "admin@beta.com",
                 PhoneNumber = "5555555555",
                 CompanyId = "beta",
                 UserId = "user789",
@@ -35,8 +38,13 @@ public class UserLookupService
         };
     }
 
-    public User? GetUserByPhoneNumber(string phoneNumber)
+    public User? GetUserByEmail(string email)
     {
-        return _users.FirstOrDefault(u => u.PhoneNumber == phoneNumber);
+        return _users.FirstOrDefault(u => u.Email.Equals(email, StringComparison.OrdinalIgnoreCase));
+    }
+
+    public User? GetUserByPhone(string phoneNumber)
+    {
+        return _users.FirstOrDefault(u => u.PhoneNumber.Equals(phoneNumber, StringComparison.OrdinalIgnoreCase));
     }
 }

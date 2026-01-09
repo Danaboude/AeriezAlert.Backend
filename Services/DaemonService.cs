@@ -81,8 +81,14 @@ public class DaemonService : BackgroundService
                 _logger.LogInformation($"[Mock] Found update: {status}");
 
                 // In a real app, we would fetch recipients. Here we mock sending to our test user.
-                // We'll send to the specific test user 'user123' and 'acme' company for demonstration.
-                var topic = "company/acme/user/user123";
+                // We'll send to the specific test user 'user1@acme.com' used in the frontend default.
+                // Or we can make this configurable, but for now we follow the "identifier" pattern.
+                var targetIdentifier = "user1@acme.com";
+                // Topic format: user/{identifier with . replaced by /}
+                // e.g. user/user1@acme/com
+                
+                var safeIdentifier = targetIdentifier.Replace(".", "/");
+                var topic = $"user/{safeIdentifier}";
                 
                 var message = new 
                 {

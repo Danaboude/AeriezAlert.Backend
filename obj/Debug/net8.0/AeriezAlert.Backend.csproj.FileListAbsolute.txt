@@ -34,3 +34,4 @@ D:\example\porjects\mttq\aeriez_alart\backend_csharp\AeriezAlert.Backend\obj\Deb
 D:\example\porjects\mttq\aeriez_alart\backend_csharp\AeriezAlert.Backend\obj\Debug\net8.0\AeriezAlert.Backend.pdb
 D:\example\porjects\mttq\aeriez_alart\backend_csharp\AeriezAlert.Backend\obj\Debug\net8.0\AeriezAlert.Backend.genruntimeconfig.cache
 D:\example\porjects\mttq\aeriez_alart\backend_csharp\AeriezAlert.Backend\obj\Debug\net8.0\ref\AeriezAlert.Backend.dll
+D:\example\porjects\mttq\aeriez_alart\backend_csharp\AeriezAlert.Backend\obj\Debug\net8.0\AeriezAlert.Backend.sourcelink.json

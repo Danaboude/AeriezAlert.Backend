@@ -8,32 +8,38 @@ namespace AeriezAlert.Backend.Controllers;
 [Route("api/auth")]
 public class AuthController : ControllerBase
 {
-    private readonly UserLookupService _userLookup;
+    private readonly PhoneNotificationService _phoneNotificationService;
 
-    public AuthController(UserLookupService userLookup)
+    public AuthController(PhoneNotificationService phoneNotificationService)
     {
-        _userLookup = userLookup;
+        _phoneNotificationService = phoneNotificationService;
     }
 
     [HttpPost("login")]
     public IActionResult Login([FromBody] LoginRequest request)
     {
-        if (string.IsNullOrWhiteSpace(request?.PhoneNumber))
+        if (string.IsNullOrWhiteSpace(request.Identifier))
         {
-            return BadRequest("Phone number is required.");
+            return BadRequest("Identifier is required.");
         }
 
-        var user = _userLookup.GetUserByPhoneNumber(request.PhoneNumber);
-        if (user == null)
-        {
-            return NotFound("User not found.");
-        }
+        // Register the user as "connected" or "known"
+        _phoneNotificationService.RegisterUser(request.Identifier);
 
+        // Return a simple success or the user object (mocked)
+        // For compatibility with frontend that expects a User object, we return a mock one.
+        var user = new User 
+        { 
+            Name = request.Identifier, 
+            Email = request.Identifier.Contains("@") ? request.Identifier : null,
+            Phone = !request.Identifier.Contains("@") ? request.Identifier : null
+        };
+        
         return Ok(user);
     }
 }
 
 public class LoginRequest
 {
-    public string PhoneNumber { get; set; } = string.Empty;
+    public string Identifier { get; set; } = string.Empty; // Email or Phone
 }

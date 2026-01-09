@@ -212,9 +212,8 @@
         <!-- Notification Sender -->
         <div class="card">
             <h2>Send Manual Notification</h2>
-            <label>Topic</label>
-            <input type="text" id="topic" placeholder="e.g. company/acme/user/user123"
-                value="company/acme/user/user123">
+            <label>Target Identifier (Email or Phone)</label>
+            <input type="text" id="targetIdentifier" placeholder="e.g. user1@acme.com" value="user1@acme.com">
 
             <label>Title</label>
             <input type="text" id="title" placeholder="Notification Title" value="Hello World">
@@ -228,15 +227,37 @@
             <textarea id="body" rows="3"
                 placeholder="Notification Body">This is a test notification from the dashboard.</textarea>
 
+            <label>Action URL (Optional)</label>
+            <input type="text" id="actionUrl" placeholder="https://flutter.dev">
+
+            <!-- Image Upload Removed -->
+
             <button onclick="sendNotification()" class="btn-primary">Send Notification</button>
+        </div>
+
+        <!-- Middleware Connection Ping Test -->
+        <div class="card">
+            <h2>Middleware Ping Test</h2>
+            <p style="color: #666;">Test if an identifier is registered/online via the middleware flow.</p>
+            <label>Identifier to Check</label>
+            <div style="display: flex; gap: 10px;">
+                <input type="text" id="pingIdentifier" placeholder="e.g. user1@acme.com" style="margin-bottom: 0;">
+                <button onclick="testPing()" class="btn-success" style="margin: 0; white-space: nowrap;">Ping
+                    Check</button>
+            </div>
+            <div id="pingResultWrapper" style="display: none; margin-top: 20px;">
+                <label>Result:</label>
+                <pre id="pingResult"></pre>
+            </div>
         </div>
 
         <!-- User Lookup Tool -->
         <div class="card">
             <h2>User Database Lookup</h2>
-            <label>Phone Number</label>
+            <label>Email or Phone</label>
             <div style="display: flex; gap: 10px;">
-                <input type="text" id="phoneLookup" placeholder="e.g. 1234567890" style="margin-bottom: 0;">
+                <input type="text" id="identifierLookup" placeholder="e.g. user@example.com or 1234567890"
+                    style="margin-bottom: 0;">
                 <button onclick="lookupUser()" class="btn-primary"
                     style="margin: 0; white-space: nowrap;">Search</button>
             </div>
@@ -297,9 +318,22 @@
         }
 
         async function sendNotification() {
-            const topic = document.getElementById('topic').value;
+            const identifier = document.getElementById('targetIdentifier').value;
+            // Generate topic: user/{identifier with . -> /}
+            // Consistency Note: If backend expects "user/foo@bar/com", we do this.
+            // If backend handles "user/foo@bar.com" -> "user/foo@bar/com", we can send that?
+            // The Controller just passes "Topic" to MqttService.PublishAsync
+            // MqttService.PublishAsync does the replace logic.
+            // So we should construct "user/{identifier}" and let backend do safely replace?
+            // Wait, MqttService.PublishAsync: `var safeTopic = topic.Replace(".", "/");`
+            // So if I send "user/test@test.com", it becomes "user/test@test/com".
+            // Correct.
+
+            const topic = `user/${identifier}`;
+
             const title = document.getElementById('title').value;
             const body = document.getElementById('body').value;
+            const actionUrl = document.getElementById('actionUrl').value;
             const useTicketFormat = document.getElementById('useTicketFormat').checked;
 
             let message;
@@ -307,16 +341,10 @@
             if (useTicketFormat) {
                 message = {
                     title: title,
-                    body: body
+                    body: body,
+                    actionUrl: actionUrl ? actionUrl : null
                 };
             } else {
-                message = body; // Send raw string if unchecked (or adjust based on need)
-                // actually backend might expect object if C# Controller type is Object.
-                // let's wrap it in object still but with just one field if needed? 
-                // Whatever, let's stick to the JSON format as default.
-                // If raw, maybe send just string?
-                // But NotificationController expects { topic, message: object }.
-                // If we send string here, C# will serialize it as string.
                 message = body;
             }
 
@@ -334,8 +362,42 @@
             }
         }
 
+        async function testPing() {
+            const identifier = document.getElementById('pingIdentifier').value;
+            const resultWrapper = document.getElementById('pingResultWrapper');
+            const resultPre = document.getElementById('pingResult');
+
+            // Determine if email or phone
+            const isEmail = identifier.includes('@');
+            const payload = [{
+                email: isEmail ? identifier : null,
+                phoneNumber: !isEmail ? identifier : null,
+                check: 0 // checking
+            }];
+
+            try {
+                const res = await fetch(`${API_BASE}/connection/ping`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (res.ok) {
+                    const data = await res.json();
+                    resultPre.innerText = JSON.stringify(data, null, 2);
+                    resultWrapper.style.display = 'block';
+                } else {
+                    resultPre.innerText = "Error: " + res.statusText;
+                    resultWrapper.style.display = 'block';
+                }
+            } catch (e) {
+                resultPre.innerText = "Error: " + e;
+                resultWrapper.style.display = 'block';
+            }
+        }
+
         async function lookupUser() {
-            const phone = document.getElementById('phoneLookup').value;
+            const identifier = document.getElementById('identifierLookup').value;
             const resultWrapper = document.getElementById('lookupResultWrapper');
             const resultPre = document.getElementById('lookupResult');
 
@@ -343,7 +405,7 @@
                 const res = await fetch(`${API_BASE}/auth/login`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ phoneNumber: phone })
+                    body: JSON.stringify({ identifier: identifier })
                 });
                 if (res.ok) {
                     const data = await res.json();
@@ -358,6 +420,8 @@
                 resultWrapper.style.display = 'block';
             }
         }
+
+        // uploadImage function removed
 
         // Initial check
         updateStatus();
