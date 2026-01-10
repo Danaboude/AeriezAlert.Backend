@@ -152,7 +152,7 @@ public class DaemonService : BackgroundService
                                 imageUrl = "https://picsum.photos/200", // Demo Image
                                 actionUrl = "https://google.com"
                             };
-                            };
+
 
                             await _mqttService.PublishAsync(topic, message);
                             _logger.LogInformation($"4. [MQTT] Published to {topic}");
