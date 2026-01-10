@@ -137,13 +137,21 @@ public class DaemonService : BackgroundService
                             var topicIdentifier = identifier.Replace(".", "/");
                             var topic = $"user/{topicIdentifier}";
                             
-                            var body = $"Hello {identifier}, you have a new task!";
+                            // Generate realistic Ticket Status
+                            var ticketId = random.Next(1000, 9999);
+                            var isNewTicket = random.NextDouble() > 0.5;
+                            var title = isNewTicket ? "New Ticket Assigned" : "Ticket Closed";
+                            var body = isNewTicket 
+                                ? $"Ticket #{ticketId} has been assigned to you. Please review the details." 
+                                : $"Ticket #{ticketId} has been marked as resolved.";
+
                             var message = new 
                             {
-                                title = "New Workflow Task",
+                                title = title,
                                 body = body,
                                 imageUrl = "https://picsum.photos/200", // Demo Image
                                 actionUrl = "https://google.com"
+                            };
                             };
 
                             await _mqttService.PublishAsync(topic, message);
