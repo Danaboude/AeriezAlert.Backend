@@ -15,17 +15,7 @@ namespace AeriezAlert.Backend.Controllers
             _phoneNotificationService = phoneNotificationService;
         }
 
-        [HttpPost("ping")]
-        public ActionResult<ConnectionPingResult> CheckConnections([FromBody] List<PhonesPings> phones)
-        {
-            if (phones == null || !phones.Any())
-            {
-                return BadRequest("List of phones is required.");
-            }
 
-            var result = _phoneNotificationService.CheckPhones(phones);
-            return Ok(result);
-        }
 
         [HttpPost("notifications")]
         public ActionResult<PhoneWithNotificationResult> GetNotifications([FromBody] List<PhonesPings> phones)

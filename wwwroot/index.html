@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Aeriez Alert Dashboard</title>
+    <title>AlertAnywhere Dashboard</title>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -186,28 +186,31 @@
 </head>
 
 <body>
+    <div id="settingsModal"
+        style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000; align-items:center; justify-content:center;">
+        <div class="card" style="width:400px; padding:30px; margin:0; max-width:90%;">
+            <h2 id="settingsTitle">API Configuration</h2>
+            <p style="color:#666">Please enter your Aeriez Public API Token.</p>
+            <input type="text" id="apiTokenInput" placeholder="eyJhbGciOiJIUzI1...">
+            <button onclick="saveApiToken()" class="btn-primary" id="saveTokenBtn">Verify & Save</button>
+            <button onclick="closeSettingsModal()" class="btn-danger" id="closeSettingsBtn"
+                style="display:none;">Close</button>
+            <p id="tokenErrorMsg" style="color:red; display:none; margin-top:10px;"></p>
+        </div>
+    </div>
+
     <div class="container">
-        <div class="header">
-            <img src="logo.png" alt="Logo" class="logo">
-            <h1>Aeriez Alert Dashboard</h1>
+        <div class="header" style="justify-content: space-between;">
+            <div style="display:flex; align-items:center;">
+                <img src="logo.png" alt="Logo" class="logo">
+                <h1>AlertAnywhere Dashboard</h1>
+            </div>
+            <div onclick="openSettingsModal(true)" style="cursor:pointer; font-size:28px;" title="Settings">
+                ⚙️
+            </div>
         </div>
 
-        <!-- Daemon Control -->
-        <div class="card">
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-                <h2>Daemon Control</h2>
-                <div class="status-container" id="daemonStatus">
-                    <span class="status-indicator off" id="statusDot"></span>
-                    <span id="statusText">Stopped</span>
-                </div>
-            </div>
-            <p style="color: #666; margin-bottom: 20px;">
-                The daemon simulates checking for new tickets every 15 seconds. If running, it will randomly generate
-                "New Ticket" alerts and send them to the test user.
-            </p>
-            <button onclick="startDaemon()" class="btn-success">Start Daemon</button>
-            <button onclick="stopDaemon()" class="btn-danger">Stop Daemon</button>
-        </div>
+        <!-- Daemon Control Removed per Request -->
 
         <!-- Notification Sender -->
         <div class="card">
@@ -238,21 +241,7 @@
             <button onclick="sendNotification()" class="btn-primary">Send Notification</button>
         </div>
 
-        <!-- Middleware Connection Ping Test -->
-        <div class="card">
-            <h2>Middleware Ping Test</h2>
-            <p style="color: #666;">Test if an identifier is registered/online via the middleware flow.</p>
-            <label>Identifier to Check</label>
-            <div style="display: flex; gap: 10px;">
-                <input type="text" id="pingIdentifier" placeholder="e.g. user1@acme.com" style="margin-bottom: 0;">
-                <button onclick="testPing()" class="btn-success" style="margin: 0; white-space: nowrap;">Ping
-                    Check</button>
-            </div>
-            <div id="pingResultWrapper" style="display: none; margin-top: 20px;">
-                <label>Result:</label>
-                <pre id="pingResult"></pre>
-            </div>
-        </div>
+
 
         <!-- Registered Users Status Panel -->
         <div class="card">
@@ -271,71 +260,12 @@
             </div>
         </div>
 
-        <!-- User Lookup Tool -->
-        <div class="card">
-            <h2>User Database Lookup</h2>
-            <label>Email or Phone</label>
-            <div style="display: flex; gap: 10px;">
-                <input type="text" id="identifierLookup" placeholder="e.g. user@example.com or 1234567890"
-                    style="margin-bottom: 0;">
-                <button onclick="lookupUser()" class="btn-primary"
-                    style="margin: 0; white-space: nowrap;">Search</button>
-            </div>
-            <div id="lookupResultWrapper" style="display: none; margin-top: 20px;">
-                <label>User Details:</label>
-                <pre id="lookupResult"></pre>
-            </div>
-        </div>
+
 
     </div>
 
     <script>
-        // Use relative path so it works on both localhost and deployed URL
         const API_BASE = '/api';
-
-        async function updateStatus() {
-            try {
-                const res = await fetch(`${API_BASE}/daemon/status`);
-                const data = await res.json();
-                const isRunning = data.isRunning;
-                const dot = document.getElementById('statusDot');
-                const text = document.getElementById('statusText');
-
-                if (isRunning) {
-                    dot.className = 'status-indicator on';
-                    text.innerText = 'Running';
-                } else {
-                    dot.className = 'status-indicator off';
-                    text.innerText = 'Stopped';
-                }
-            } catch (e) {
-                console.error("Failed to fetch daemon status:", e);
-                const dot = document.getElementById('statusDot');
-                const text = document.getElementById('statusText');
-                dot.className = 'status-indicator off';
-                text.innerText = 'Error';
-            }
-        }
-
-        async function startDaemon() {
-            try {
-                await fetch(`${API_BASE}/daemon/start`, { method: 'POST' });
-                updateStatus();
-            } catch (e) {
-                console.error("Failed to start daemon:", e);
-                alert('Error starting daemon');
-            }
-        }
-
-        async function stopDaemon() {
-            try {
-                await fetch(`${API_BASE}/daemon/stop`, { method: 'POST' });
-                updateStatus();
-            } catch (e) {
-                console.error("Failed to stop daemon:", e);
-                alert('Error stopping daemon');
-            }
-        }
 
         async function sendNotification() {
             const identifier = document.getElementById('targetIdentifier').value;
@@ -452,27 +382,38 @@
                 if (res.ok) {
                     const users = await res.json();
                     list.innerHTML = '';
-                    if (users.length === 0) list.innerHTML = '<div style="padding:10px;">No users found</div>';
+                    const validUsers = users.filter(u => u && u.length > 2);
+                    if (validUsers.length === 0) {
+                        list.innerHTML = '<div style="padding:10px;">No users found</div>';
+                        return;
+                    }
 
-                    users.forEach(u => {
+                    // Auto-fill the first user
+                    document.getElementById('targetIdentifier').value = validUsers[0];
+                    if (document.getElementById('pingIdentifier')) {
+                        document.getElementById('pingIdentifier').value = validUsers[0];
+                    }
+
+                    validUsers.forEach(u => {
                         const item = document.createElement('div');
                         item.style.padding = '10px';
                         item.style.background = '#fff';
                         item.style.border = '1px solid #ddd';
                         item.style.borderRadius = '6px';
-                        item.innerHTML = `
-                            <strong>${u.userId || 'Unknown'}</strong><br/>
-                            <small>${u.email || ''}</small><br/>
-                            <small>${u.phoneNumber || ''}</small>
-                        `;
+                        item.style.overflow = 'hidden';
+                        item.style.textOverflow = 'ellipsis';
+                        item.style.whiteSpace = 'nowrap';
+                        item.title = u;
+                        item.innerHTML = `<strong>${u}</strong>`;
+
                         // Click to populate inputs
                         item.onclick = () => {
-                            const id = u.email || u.phoneNumber;
-                            document.getElementById('targetIdentifier').value = id;
-                            document.getElementById('pingIdentifier').value = id;
+                            document.getElementById('targetIdentifier').value = u;
+                            if (document.getElementById('pingIdentifier')) {
+                                document.getElementById('pingIdentifier').value = u;
+                            }
                         };
                         item.style.cursor = 'pointer';
-                        item.title = "Click to select";
                         list.appendChild(item);
                     });
                 } else {
@@ -483,11 +424,73 @@
             }
         }
 
+        async function checkTokenConfig() {
+            try {
+                const res = await fetch(`${API_BASE}/settings/token-status`);
+                if (res.ok) {
+                    const data = await res.json();
+                    if (!data.isConfigured) {
+                        openSettingsModal(false);
+                    } else {
+                        // Load users if configured
+                        loadUsers();
+                    }
+                }
+            } catch (e) {
+                console.error("Could not check token status", e);
+            }
+        }
+
+        function openSettingsModal(canClose) {
+            document.getElementById('settingsModal').style.display = 'flex';
+            document.getElementById('apiTokenInput').value = '';
+            document.getElementById('tokenErrorMsg').style.display = 'none';
+            document.getElementById('closeSettingsBtn').style.display = canClose ? 'inline-block' : 'none';
+        }
+
+        function closeSettingsModal() {
+            document.getElementById('settingsModal').style.display = 'none';
+        }
+
+        async function saveApiToken() {
+            const token = document.getElementById('apiTokenInput').value.trim();
+            const btn = document.getElementById('saveTokenBtn');
+            const errorMsg = document.getElementById('tokenErrorMsg');
+
+            if (!token) return;
+
+            btn.disabled = true;
+            btn.innerText = "Verifying...";
+            errorMsg.style.display = 'none';
+
+            try {
+                const res = await fetch(`${API_BASE}/settings/token`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ token: token })
+                });
+
+                if (res.ok) {
+                    closeSettingsModal();
+                    alert("Token verified and saved successfully!");
+                    loadUsers();
+                } else {
+                    const data = await res.json();
+                    errorMsg.innerText = data.message || "Invalid Token.";
+                    errorMsg.style.display = 'block';
+                }
+            } catch (e) {
+                errorMsg.innerText = "Connection error while verifying token.";
+                errorMsg.style.display = 'block';
+            } finally {
+                btn.disabled = false;
+                btn.innerText = "Verify & Save";
+            }
+        }
+
         // Initial check
         window.addEventListener('load', () => {
-            updateStatus();
-            setInterval(updateStatus, 10000);
-            loadUsers();
+            checkTokenConfig();
         });
     </script>
 </body>

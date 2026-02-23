@@ -1,20 +1,24 @@
 {
   "format": 1,
   "restore": {
-    "D:\\example\\porjects\\mttq\\aeriez_alart\\backend_csharp\\AeriezAlert.Backend\\AeriezAlert.Backend.csproj": {}
+    "D:\\example\\porjects\\aeriez\\system\\ConnectAnywhere\\aeriez_alart\\backend_csharp\\aeriezalert.backend\\AeriezAlert.Backend.csproj": {}
   },
   "projects": {
-    "D:\\example\\porjects\\mttq\\aeriez_alart\\backend_csharp\\AeriezAlert.Backend\\AeriezAlert.Backend.csproj": {
+    "D:\\example\\porjects\\aeriez\\system\\ConnectAnywhere\\aeriez_alart\\backend_csharp\\aeriezalert.backend\\AeriezAlert.Backend.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "D:\\example\\porjects\\mttq\\aeriez_alart\\backend_csharp\\AeriezAlert.Backend\\AeriezAlert.Backend.csproj",
+        "projectUniqueName": "D:\\example\\porjects\\aeriez\\system\\ConnectAnywhere\\aeriez_alart\\backend_csharp\\aeriezalert.backend\\AeriezAlert.Backend.csproj",
         "projectName": "AeriezAlert.Backend",
-        "projectPath": "D:\\example\\porjects\\mttq\\aeriez_alart\\backend_csharp\\AeriezAlert.Backend\\AeriezAlert.Backend.csproj",
+        "projectPath": "D:\\example\\porjects\\aeriez\\system\\ConnectAnywhere\\aeriez_alart\\backend_csharp\\aeriezalert.backend\\AeriezAlert.Backend.csproj",
         "packagesPath": "C:\\Users\\abdul kareem\\.nuget\\packages\\",
-        "outputPath": "D:\\example\\porjects\\mttq\\aeriez_alart\\backend_csharp\\AeriezAlert.Backend\\obj\\",
+        "outputPath": "D:\\example\\porjects\\aeriez\\system\\ConnectAnywhere\\aeriez_alart\\backend_csharp\\aeriezalert.backend\\obj\\",
         "projectStyle": "PackageReference",
+        "fallbackFolders": [
+          "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
+        ],
         "configFilePaths": [
           "C:\\Users\\abdul kareem\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
           "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
         ],
         "originalTargetFrameworks": [
@@ -39,7 +43,8 @@
           "enableAudit": "true",
           "auditLevel": "low",
           "auditMode": "direct"
-        }
+        },
+        "SdkAnalysisLevel": "10.0.100"
       },
       "frameworks": {
         "net8.0": {
@@ -73,6 +78,24 @@
           ],
           "assetTargetFallback": true,
           "warn": true,
+          "downloadDependencies": [
+            {
+              "name": "Microsoft.AspNetCore.App.Ref",
+              "version": "[8.0.24, 8.0.24]"
+            },
+            {
+              "name": "Microsoft.NETCore.App.Host.win-x64",
+              "version": "[8.0.24, 8.0.24]"
+            },
+            {
+              "name": "Microsoft.NETCore.App.Ref",
+              "version": "[8.0.24, 8.0.24]"
+            },
+            {
+              "name": "Microsoft.WindowsDesktop.App.Ref",
+              "version": "[8.0.24, 8.0.24]"
+            }
+          ],
           "frameworkReferences": {
             "Microsoft.AspNetCore.App": {
               "privateAssets": "none"
@@ -81,7 +104,7 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\8.0.416/PortableRuntimeIdentifierGraph.json"
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.103/PortableRuntimeIdentifierGraph.json"
         }
       }
     }

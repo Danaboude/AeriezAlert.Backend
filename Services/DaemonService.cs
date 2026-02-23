@@ -6,20 +6,51 @@ public class DaemonService : BackgroundService
 {
     private readonly ILogger<DaemonService> _logger;
     private readonly MqttService _mqttService;
-    private readonly IServiceProvider _serviceProvider;
+    private readonly UserLookupService _userLookupService;
+    private readonly PhoneNotificationService _phoneNotificationService;
     
     // Polling configuration
     private const int PollingIntervalMs = 15000;
-    private bool _isRunning = false;
-    private bool _isPolling = false;
+    private bool _isRunning = true;
+    private readonly HashSet<int> _sentNotificationIds = new();
+
+    // Semaphore to handle waiting when no users are active.
+    // Initial count 0 means it will block immediately if we wait on it.
+    private readonly SemaphoreSlim _activitySemaphore = new(0);
 
     public bool IsRunning => _isRunning;
 
-    public DaemonService(ILogger<DaemonService> logger, MqttService mqttService, IServiceProvider serviceProvider)
+    public DaemonService(
+        ILogger<DaemonService> logger, 
+        MqttService mqttService, 
+        UserLookupService userLookupService,
+        PhoneNotificationService phoneNotificationService)
     {
         _logger = logger;
         _mqttService = mqttService;
-        _serviceProvider = serviceProvider;
+        _userLookupService = userLookupService; // Injected directly (Singleton)
+        _phoneNotificationService = phoneNotificationService; // Injected directly (Singleton)
+
+        // Subscribe to activity events to wake up the daemon
+        _userLookupService.OnUserActivityDetected += OnUserActivity;
+    }
+
+    private void OnUserActivity()
+    {
+        // If we are currently waiting on the semaphore, release it to wake up the loop.
+        // CurrentCount == 0 means no slots are available (so we might be waiting).
+        if (_activitySemaphore.CurrentCount == 0)
+        {
+            try 
+            {
+                _activitySemaphore.Release();
+                _logger.LogInformation("[Daemon] Activity detected! Waking up...");
+            }
+            catch (SemaphoreFullException)
+            {
+                // Already released, ignore.
+            }
+        }
     }
 
     public void StartPolling()
@@ -27,6 +58,7 @@ public class DaemonService : BackgroundService
         if (_isRunning) return;
         _isRunning = true;
         _logger.LogInformation("Daemon Service started polling.");
+        OnUserActivity(); // Wake up if we were stopped
     }
 
     public void StopPolling()
@@ -34,6 +66,12 @@ public class DaemonService : BackgroundService
         if (!_isRunning) return;
         _isRunning = false;
         _logger.LogInformation("Daemon Service stopped polling.");
+    }
+
+    public override void Dispose()
+    {
+        _userLookupService.OnUserActivityDetected -= OnUserActivity;
+        base.Dispose();
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -48,123 +86,119 @@ public class DaemonService : BackgroundService
             _logger.LogError(ex, "Failed to connect to MQTT on startup.");
         }
 
+        _logger.LogInformation("Daemon Service is running.");
+
         while (!stoppingToken.IsCancellationRequested)
         {
-            if (_isRunning && !_isPolling)
+            if (_isRunning)
             {
-                await PollForNewTickets();
-            }
+                // 1. Fetch Active Users
+                var activeIdentifiers = _userLookupService.GetActiveUsers();
 
-            await Task.Delay(1000, stoppingToken); // Check every second if we should poll
+                if (activeIdentifiers.Count == 0)
+                {
+                    _logger.LogInformation("[Daemon] No active users. Sleeping until activity detected...");
+                    // Wait indefinitely until OnUserActivity releases the semaphore
+                    await _activitySemaphore.WaitAsync(stoppingToken);
+                    continue; // Loop again to re-check
+                }
+
+                // If we have users, poll for notifications
+                await PollForNewTickets(activeIdentifiers);
+
+                // Wait for the polling interval before next cycle
+                try 
+                {
+                    await Task.Delay(PollingIntervalMs, stoppingToken);
+                }
+                catch (TaskCanceledException) { break; }
+            }
+            else
+            {
+                await Task.Delay(1000, stoppingToken);
+            }
         }
     }
 
-    private async Task PollForNewTickets()
+    private async Task PollForNewTickets(List<string> activeIdentifiers)
     {
-        _isPolling = true;
         try
         {
-            _logger.LogInformation("--- [Mock Middleware Cycle Start] ---");
+            _logger.LogInformation("--- [Middleware Cycle Start] ---");
 
-            // 1. Define Mock Input List (Mixed valid and invalid users)
-            // In production, this comes from your API source.
-            var mockInputList = new List<PhonesPings>
+            var inputList = activeIdentifiers.Select(id => new PhonesPings 
+            { 
+                Email = id.Contains("@") ? id : null, 
+                PhoneNumber = !id.Contains("@") ? id : null 
+            }).ToList();
+
+            _logger.LogInformation($"   -> Checking {inputList.Count} active users.");
+
+            // 2. Fetch Notifications directly
+             var notificationResult = await _phoneNotificationService.GetNotificationsGlobal(inputList);
+            
+            if (notificationResult.PhonesWithNotifications.Count > 0)
             {
-                new PhonesPings { Email = "user1@acme.com" }, // Valid (Mock DB)
-                new PhonesPings { Email = "unknown@test.com" }, // Invalid
-                new PhonesPings { PhoneNumber = "1234567890" } // Invalid/Unknown
-            };
+                _logger.LogInformation($"   -> Found notifications for {notificationResult.PhonesWithNotifications.Count} users.");
 
-            _logger.LogInformation($"1. Input List: {mockInputList.Count} entries.");
-
-            using (var scope = _serviceProvider.CreateScope())
-            {
-                var phoneService = scope.ServiceProvider.GetRequiredService<PhoneNotificationService>();
-
-                // 2. Step 1: Ping / CheckPhones
-                // "The API will then return a ConnectionPingResult."
-                var pingResult = phoneService.CheckPhones(mockInputList);
-
-                _logger.LogInformation($"2. Ping Result: {pingResult.Phones.Count} checked.");
-
-                // 3. Step 2: Handle Unknowns & Filter
-                // "You should send a notification to the unknown phones... filter out the None and Unknown"
-                var validUsers = new List<PhonesPings>();
-
-                foreach (var phoneResult in pingResult.Phones)
+                // 3. Publish MQTT
+                foreach (var pwn in notificationResult.PhonesWithNotifications)
                 {
-                    var identifier = !string.IsNullOrEmpty(phoneResult.Email) ? phoneResult.Email : phoneResult.PhoneNumber;
+                    var identifier = !string.IsNullOrEmpty(pwn.Email) ? pwn.Email : pwn.PhoneNumber;
+                    if (string.IsNullOrEmpty(identifier)) continue;
 
-                    if (phoneResult.Check == PhonesPingsAnswer.Unknown || phoneResult.Check == PhonesPingsAnswer.none)
-                    {
-                        // Mock "Sending Invite"
-                        _logger.LogWarning($"   -> [Unknown User] Sending SMS/Invite to: {identifier}");
-                    }
-                    else if (phoneResult.Check == PhonesPingsAnswer.notification)
-                    {
-                        // Known user, add to filter list
-                        validUsers.Add(new PhonesPings 
-                        { 
-                            Email = phoneResult.Email, 
-                            PhoneNumber = phoneResult.PhoneNumber 
-                        });
-                        _logger.LogInformation($"   -> [Known User] Added to valid list: {identifier}");
-                    }
-                }
+                    // Get user session to check LastSyncTime
+                    var session = _userLookupService.GetSession(identifier);
+                    var lastSync = session?.LastSyncTime ?? DateTime.MinValue;
+                    var maxTimestamp = lastSync;
 
-                if (validUsers.Count == 0)
-                {
-                     _logger.LogInformation("3. No valid users found to notify.");
-                }
-                else
-                {
-                    // 4. Step 3: Get Notifications for Knowns
-                    // "send a new request with the filtered numbers... receive a PhoneWithNotificationResult"
-                    _logger.LogInformation($"3. Requesting notifications for {validUsers.Count} valid users...");
-                    
-                    var notificationResult = phoneService.GetNotificationsGlobal(validUsers);
+                    int sentCount = 0;
 
-                    // 5. Step 4: Publish MQTT
-                    // "send notifications to all remaining phones"
-                    var random = new Random();
-                    foreach (var pwn in notificationResult.PhonesWithNotifications)
+                    foreach(var notif in pwn.Notifications)
                     {
-                        var identifier = !string.IsNullOrEmpty(pwn.Email) ? pwn.Email : pwn.PhoneNumber;
+                        // Filter by timestamp (CreatedAt)
+                        if (notif.CreatedAt <= lastSync) continue;
+                        if (_sentNotificationIds.Contains(notif.Id)) continue;
+
+                        _sentNotificationIds.Add(notif.Id);
+                        sentCount++;
+
+                        var topicIdentifier = identifier.Replace(".", "/");
+                        var topic = $"user/{topicIdentifier}";
                         
-                        // Simulate a message if we "have" one (Random chance for demo)
-                        if (random.NextDouble() < 0.5) 
+                        var message = new 
                         {
-                            var topicIdentifier = identifier.Replace(".", "/");
-                            var topic = $"user/{topicIdentifier}";
-                            
-                            // Generate realistic Ticket Status
-                            var ticketId = random.Next(1000, 9999);
-                            var isNewTicket = random.NextDouble() > 0.5;
-                            var title = isNewTicket ? "New Ticket Assigned" : "Ticket Closed";
-                            var body = isNewTicket 
-                                ? $"Ticket #{ticketId} has been assigned to you. Please review the details." 
-                                : $"Ticket #{ticketId} has been marked as resolved.";
+                            title = notif.Title,
+                            body = notif.Message,
+                            imageUrl = notif.ImageUrl,
+                            actionUrl = notif.ActionUrl,
+                            timestamp = notif.CreatedAt
+                        };
 
-                            var message = new 
-                            {
-                                title = title,
-                                body = body,
-                                imageUrl = "https://picsum.photos/200", // Demo Image
-                                actionUrl = "https://google.com"
-                            };
-
-
-                            await _mqttService.PublishAsync(topic, message);
-                            _logger.LogInformation($"4. [MQTT] Published to {topic}");
-                        }
-                        else
+                        await _mqttService.PublishAsync(topic, message);
+                        
+                        if (notif.CreatedAt > maxTimestamp)
                         {
-                            _logger.LogInformation($"4. [No New Message] for {identifier}");
+                            maxTimestamp = notif.CreatedAt;
                         }
+                    }
+
+                    if (sentCount > 0)
+                    {
+                         _logger.LogInformation($"      -> Sent {sentCount} new notifications to {identifier}");
+                         // Update Sync Time
+                         if (maxTimestamp > lastSync)
+                         {
+                             _userLookupService.UpdateLastSyncTime(identifier, maxTimestamp);
+                         }
                     }
                 }
             }
-             _logger.LogInformation("--- [Mock Middleware Cycle End] ---");
+            else
+            {
+                 _logger.LogInformation("   -> No new notifications.");
+            }
+             _logger.LogInformation("--- [Middleware Cycle End] ---");
         }
         catch (Exception ex)
         {
@@ -172,8 +206,6 @@ public class DaemonService : BackgroundService
         }
         finally
         {
-            _isPolling = false;
-            await Task.Delay(PollingIntervalMs);
         }
     }
 }

@@ -13,6 +13,14 @@ builder.Logging.AddFilter("AeriezAlert", LogLevel.Information); // Keep our app 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+builder.Services.AddDataProtection();
+
+// Configure Aeriez API settings from appsettings.json
+builder.Services.Configure<AeriezAlert.Backend.Models.AeriezApiSettings>(
+    builder.Configuration.GetSection("AeriezApi"));
+
+// Register HttpClient for API calls
+builder.Services.AddHttpClient<UserLookupService>();
 
 // Register Custom Services
 builder.Services.AddSingleton<MqttService>();

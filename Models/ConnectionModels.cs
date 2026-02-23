@@ -16,10 +16,12 @@ namespace AeriezAlert.Backend.Models
 
     public class Notification
     {
+        public int Id { get; set; }
         public string Title { get; set; } = string.Empty;
         public string Message { get; set; } = string.Empty;
         public string ImageUrl { get; set; } = string.Empty;
         public string ActionUrl { get; set; } = string.Empty; // Added this based on requirement
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow; // Added for sync logic
     }
 
     public class ConnectionPingResult

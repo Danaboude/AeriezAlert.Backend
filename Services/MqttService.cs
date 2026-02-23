@@ -11,28 +11,118 @@ public class MqttService : IDisposable
 {
     private readonly IManagedMqttClient _mqttClient;
     private readonly ILogger<MqttService> _logger;
+    private readonly IServiceProvider _serviceProvider;
     private readonly IConfiguration _configuration;
 
-    /* 
-       Old CloudAMQP Credentials (Kept for reference):
-       private const string BrokerUrl = "goose.rmq2.cloudamqp.com";
-       private const int BrokerPort = 8883;
-       private const string Username = "mjzobrvj:mjzobrvj";
-       private const string Password = "6Nny-gtuyC5e7bNn1s599fgKDrCUy_8d";
-    */
-
-    public MqttService(ILogger<MqttService> logger, IConfiguration configuration)
+    public MqttService(ILogger<MqttService> logger, IConfiguration configuration, IServiceProvider serviceProvider)
     {
         _logger = logger;
         _configuration = configuration;
+        _serviceProvider = serviceProvider;
         _mqttClient = new MqttFactory().CreateManagedMqttClient();
-        _mqttClient.ConnectedAsync += e => {
+        
+        _mqttClient.ConnectedAsync += async e => {
             _logger.LogInformation("Connected to MQTT Broker.");
-            return Task.CompletedTask;
+            
+            // Subscribe to Ping topic
+            await _mqttClient.SubscribeAsync("aeriez/ping");
+            await _mqttClient.SubscribeAsync("aeriez/disconnect");
+            _logger.LogInformation("Subscribed to aeriez/ping and aeriez/disconnect");
         };
+
         _mqttClient.DisconnectedAsync += e => {
             _logger.LogWarning($"Disconnected from MQTT Broker: {e.Reason}");
             return Task.CompletedTask;
+        };
+
+        _mqttClient.ApplicationMessageReceivedAsync += async e => {
+            var topic = e.ApplicationMessage.Topic;
+            
+            if (topic == "aeriez/ping")
+            {
+                var payload = e.ApplicationMessage.ConvertPayloadToString();
+                _logger.LogInformation($"[MQTT] Received Ping: {payload}");
+
+                try 
+                {
+                    string? identifier = null;
+                    using (var scope = _serviceProvider.CreateScope())
+                    {
+                        var userLookup = scope.ServiceProvider.GetRequiredService<UserLookupService>();
+                        var json = System.Text.Json.JsonDocument.Parse(payload);
+                        
+                        DateTime? clientTimestamp = null;
+                        if (json.RootElement.TryGetProperty("timestamp", out var tsElement))
+                        {
+                            if (tsElement.TryGetDateTime(out var ts)) {
+                                clientTimestamp = ts;
+                            }
+                        }
+
+                        if (json.RootElement.TryGetProperty("identifier", out var idElement))
+                        {
+                            identifier = idElement.GetString();
+                            if (!string.IsNullOrEmpty(identifier))
+                            {
+                                // Validate and register user against cached list
+                                bool isRegistered = await userLookup.RegisterActiveUserAsync(identifier, clientTimestamp);
+                                
+                                if (!isRegistered)
+                                {
+                                    _logger.LogWarning($"[MQTT] Registration failed for {identifier} - User not found in allowed list.");
+                                    identifier = null; // Clear identifier so we don't send ACK
+                                }
+                            }
+                        }
+                    }
+
+                    // Send ACK back to user if we have a valid identifier
+                    if (!string.IsNullOrEmpty(identifier))
+                    {
+                        var ackPayload = new 
+                        { 
+                            type = "pong", 
+                            timestamp = DateTime.UtcNow,
+                            message = "Connected successfully" // User requested friendly message
+                        };
+                        // user topic format: user/email/com
+                        var userTopic = $"user/{identifier}"; 
+                        await PublishAsync(userTopic, ackPayload);
+                        _logger.LogInformation($"[MQTT] Sent Pong to {userTopic}");
+                    }
+                }
+                catch(Exception ex)
+                {
+                    _logger.LogError(ex, "Error processing ping message");
+                }
+            }
+            else if (topic == "aeriez/disconnect")
+            {
+                var payload = e.ApplicationMessage.ConvertPayloadToString();
+                _logger.LogInformation($"[MQTT] Received Disconnect: {payload}");
+
+                try 
+                {
+                    using (var scope = _serviceProvider.CreateScope())
+                    {
+                        var userLookup = scope.ServiceProvider.GetRequiredService<UserLookupService>();
+                        var json = System.Text.Json.JsonDocument.Parse(payload);
+                        
+                        if (json.RootElement.TryGetProperty("identifier", out var idElement))
+                        {
+                            var identifier = idElement.GetString();
+                            if (!string.IsNullOrEmpty(identifier))
+                            {
+                                userLookup.RemoveActiveUser(identifier);
+                            }
+                        }
+                    }
+                }
+                catch(Exception ex)
+                {
+                    _logger.LogError(ex, "Error processing disconnect message");
+                }
+            }
         };
     }
 
