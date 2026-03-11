@@ -23,7 +23,8 @@ public class UserLookupService
     private readonly AeriezApiSettings _settings;
     private readonly ILogger<UserLookupService> _logger;
     private const string PersistenceFile = "active_users.json";
-    private const string TokenFile = "api_token.dat";
+    private const string SettingsFile = "api_settings.dat";
+    private AeriezApiSettings _currentSettings;
     
     // Configurable expiration days (e.g., 7 days)
     private const int InactivityThresholdDays = 7;
@@ -51,23 +52,20 @@ public class UserLookupService
         _logger = logger;
         _protector = dataProtectionProvider.CreateProtector("AeriezAlert.ApiTokenProtector");
 
-        // Configure HttpClient base address and default headers
-        var baseUrl = _settings.BaseUrl.EndsWith("/") ? _settings.BaseUrl : _settings.BaseUrl + "/";
-        _httpClient.BaseAddress = new Uri(baseUrl);
-        // Load token from Disk if it exists, otherwise use AppSettings.
-        var token = LoadToken();
-        if (string.IsNullOrEmpty(token))
+        _currentSettings = LoadSettings() ?? new AeriezApiSettings
         {
-            token = _settings.PublicApiToken;
-        }
+            BaseUrl = _settings.BaseUrl,
+            PublicApiToken = _settings.PublicApiToken,
+            RefreshIntervalMinutes = _settings.RefreshIntervalMinutes
+        };
 
-        if (string.IsNullOrEmpty(token))
+        if (string.IsNullOrEmpty(_currentSettings.PublicApiToken) || string.IsNullOrEmpty(_currentSettings.BaseUrl))
         {
-             _logger.LogWarning("[UserLookup] API Token not configured. Waiting for configuration via UI.");
+             _logger.LogWarning("[UserLookup] API Settings not fully configured. Waiting for configuration via UI.");
         }
         else
         {
-             SetHttpClientToken(token);
+             SetHttpClientToken(_currentSettings.PublicApiToken);
             // Fire and forget initial sync if we have a token
             _ = RefreshValidUsersAsync();
         }
@@ -75,22 +73,25 @@ public class UserLookupService
         LoadSessions();
     }
 
-    private string LoadToken()
+    private AeriezApiSettings? LoadSettings()
     {
-        if (File.Exists(TokenFile))
+        if (File.Exists(SettingsFile))
         {
              try
              {
-                 var encrypted = File.ReadAllText(TokenFile).Trim();
-                 return _protector.Unprotect(encrypted);
+                 var encrypted = File.ReadAllText(SettingsFile).Trim();
+                 var json = _protector.Unprotect(encrypted);
+                 return JsonSerializer.Deserialize<AeriezApiSettings>(json);
              }
              catch (Exception ex)
              {
-                 _logger.LogWarning(ex, "[UserLookup] Failed to decrypt API token. It may be missing, corrupt, or created with a different key.");
+                 _logger.LogWarning(ex, "[UserLookup] Failed to decrypt API settings. They may be missing, corrupt, or created with a different key.");
              }
         }
-        return string.Empty; 
+        return null; 
     }
+
+    public AeriezApiSettings GetCurrentSettings() => _currentSettings;
 
     private void SetHttpClientToken(string token)
     {
@@ -98,33 +99,36 @@ public class UserLookupService
          _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {token}");
     }
 
-    public bool IsTokenConfigured()
+    public bool IsConfigured()
     {
-         var token = LoadToken();
-         if (string.IsNullOrEmpty(token)) token = _settings.PublicApiToken;
-         return !string.IsNullOrEmpty(token);
+         return !string.IsNullOrEmpty(_currentSettings.PublicApiToken) && !string.IsNullOrEmpty(_currentSettings.BaseUrl);
     }
 
-    public async Task<bool> ValidateAndSetTokenAsync(string token)
+    public async Task<bool> ValidateAndSetSettingsAsync(string baseUrl, string token, int refreshInterval)
     {
-         if(string.IsNullOrWhiteSpace(token)) return false;
+         if(string.IsNullOrWhiteSpace(token) || string.IsNullOrWhiteSpace(baseUrl)) return false;
          token = token.Trim();
+         baseUrl = baseUrl.Trim();
+         if (!baseUrl.EndsWith("/")) baseUrl += "/";
 
          // Save original to restore if needed
          var originalAuth = _httpClient.DefaultRequestHeaders.Authorization;
-         
          SetHttpClientToken(token);
 
          try
          {
-              // Test the token with an empty filter (GET with no query params)
-               var response = await _httpClient.GetAsync("open-api/users/notifications");
+               var response = await _httpClient.GetAsync($"{baseUrl}open-api/users/notifications");
                if (response.IsSuccessStatusCode)
                {
                     // It works, save it securely and refresh users
-                    var encrypted = _protector.Protect(token);
-                    await File.WriteAllTextAsync(TokenFile, encrypted);
-                    _logger.LogInformation("[UserLookup] New API Token verified and saved securely.");
+                    _currentSettings.BaseUrl = baseUrl;
+                    _currentSettings.PublicApiToken = token;
+                    _currentSettings.RefreshIntervalMinutes = refreshInterval > 0 ? refreshInterval : 30;
+
+                    var jsonSettings = JsonSerializer.Serialize(_currentSettings);
+                    var encrypted = _protector.Protect(jsonSettings);
+                    await File.WriteAllTextAsync(SettingsFile, encrypted);
+                    _logger.LogInformation("[UserLookup] New API Settings verified and saved securely.");
                     
                     var json = await response.Content.ReadAsStringAsync();
                     var result = JsonSerializer.Deserialize<List<PhonesPings>>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
@@ -150,7 +154,7 @@ public class UserLookupService
          }
          catch(Exception ex)
          {
-              _logger.LogError(ex, "[UserLookup] Error validating new API token.");
+              _logger.LogError(ex, "[UserLookup] Error validating new API settings.");
          }
 
          // Failed, revert
@@ -160,11 +164,12 @@ public class UserLookupService
 
     private async Task RefreshValidUsersAsync()
     {
-        if (!IsTokenConfigured()) return;
+        if (!IsConfigured()) return;
         try
         {
-            // GET with no query params — server returns all users in the system for cache building
-            var response = await _httpClient.GetAsync("open-api/users/notifications");
+            var baseUrl = _currentSettings.BaseUrl;
+            if (!baseUrl.EndsWith("/")) baseUrl += "/";
+            var response = await _httpClient.GetAsync($"{baseUrl}open-api/users/notifications");
             if (response.IsSuccessStatusCode)
             {
                 var json = await response.Content.ReadAsStringAsync();
@@ -377,7 +382,9 @@ public class UserLookupService
                 return string.Join("&", parts);
             }));
 
-            var url = string.IsNullOrEmpty(qs) ? "open-api/notifications" : $"open-api/notifications?{qs}";
+            var baseUrl = _currentSettings.BaseUrl;
+            if (!baseUrl.EndsWith("/")) baseUrl += "/";
+            var url = string.IsNullOrEmpty(qs) ? $"{baseUrl}open-api/notifications" : $"{baseUrl}open-api/notifications?{qs}";
             var response = await _httpClient.GetAsync(url);
             
             if (response.IsSuccessStatusCode)

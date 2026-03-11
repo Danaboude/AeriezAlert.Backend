@@ -190,8 +190,13 @@
         style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000; align-items:center; justify-content:center;">
         <div class="card" style="width:400px; padding:30px; margin:0; max-width:90%;">
             <h2 id="settingsTitle">API Configuration</h2>
-            <p style="color:#666">Please enter your Aeriez Public API Token.</p>
+            <p style="color:#666">Please provide your Aeriez API connection details.</p>
+            <label>Base URL</label>
+            <input type="text" id="baseUrlInput" placeholder="https://aeriez-api-test.azurewebsites.net/api">
+            <label>API Token</label>
             <input type="text" id="apiTokenInput" placeholder="eyJhbGciOiJIUzI1...">
+            <label>Refresh Interval (Min)</label>
+            <input type="number" id="refreshIntervalInput" value="30">
             <button onclick="saveApiToken()" class="btn-primary" id="saveTokenBtn">Verify & Save</button>
             <button onclick="closeSettingsModal()" class="btn-danger" id="closeSettingsBtn"
                 style="display:none;">Close</button>
@@ -424,11 +429,16 @@
             }
         }
 
+        let currentSettings = null;
+
         async function checkTokenConfig() {
             try {
                 const res = await fetch(`${API_BASE}/settings/token-status`);
                 if (res.ok) {
                     const data = await res.json();
+                    if (data.settings) {
+                        currentSettings = data.settings;
+                    }
                     if (!data.isConfigured) {
                         openSettingsModal(false);
                     } else {
@@ -443,7 +453,15 @@
 
         function openSettingsModal(canClose) {
             document.getElementById('settingsModal').style.display = 'flex';
-            document.getElementById('apiTokenInput').value = '';
+            if (currentSettings) {
+                document.getElementById('baseUrlInput').value = currentSettings.baseUrl || '';
+                document.getElementById('apiTokenInput').value = currentSettings.publicApiToken || '';
+                document.getElementById('refreshIntervalInput').value = currentSettings.refreshIntervalMinutes || 30;
+            } else {
+                document.getElementById('baseUrlInput').value = 'https://aeriez-api-test.azurewebsites.net/api';
+                document.getElementById('apiTokenInput').value = '';
+                document.getElementById('refreshIntervalInput').value = 30;
+            }
             document.getElementById('tokenErrorMsg').style.display = 'none';
             document.getElementById('closeSettingsBtn').style.display = canClose ? 'inline-block' : 'none';
         }
@@ -453,11 +471,13 @@
         }
 
         async function saveApiToken() {
+            const baseUrl = document.getElementById('baseUrlInput').value.trim();
             const token = document.getElementById('apiTokenInput').value.trim();
+            const refreshInterval = parseInt(document.getElementById('refreshIntervalInput').value) || 30;
             const btn = document.getElementById('saveTokenBtn');
             const errorMsg = document.getElementById('tokenErrorMsg');
 
-            if (!token) return;
+            if (!baseUrl || !token) return;
 
             btn.disabled = true;
             btn.innerText = "Verifying...";
@@ -467,20 +487,21 @@
                 const res = await fetch(`${API_BASE}/settings/token`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ token: token })
+                    body: JSON.stringify({ baseUrl: baseUrl, token: token, refreshIntervalMinutes: refreshInterval })
                 });
 
                 if (res.ok) {
+                    currentSettings = { baseUrl: baseUrl, publicApiToken: token, refreshIntervalMinutes: refreshInterval };
                     closeSettingsModal();
-                    alert("Token verified and saved successfully!");
+                    alert("Settings verified and saved successfully!");
                     loadUsers();
                 } else {
                     const data = await res.json();
-                    errorMsg.innerText = data.message || "Invalid Token.";
+                    errorMsg.innerText = data.message || "Invalid Settings.";
                     errorMsg.style.display = 'block';
                 }
             } catch (e) {
-                errorMsg.innerText = "Connection error while verifying token.";
+                errorMsg.innerText = "Connection error while verifying settings.";
                 errorMsg.style.display = 'block';
             } finally {
                 btn.disabled = false;

@@ -153,3 +153,4 @@ D:\example\porjects\aeriez\system\aeriez_alart\backend_csharp\aeriezalert.backen
 D:\example\porjects\aeriez\system\aeriez_alart\backend_csharp\aeriezalert.backend\obj\Debug\net8.0\AeriezAlert.Backend.genruntimeconfig.cache
 D:\example\porjects\aeriez\system\aeriez_alart\backend_csharp\aeriezalert.backend\obj\Debug\net8.0\ref\AeriezAlert.Backend.dll
 D:\example\porjects\aeriez\system\ConnectAnywhere\aeriez_alart\backend_csharp\aeriezalert.backend\bin\Debug\net8.0\active_users.json
+D:\example\porjects\aeriez\system\aeriez_alart\backend_csharp\AeriezAlert.Backend\bin\Debug\net8.0\active_users.json

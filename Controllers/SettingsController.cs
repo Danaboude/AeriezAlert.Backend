@@ -21,7 +21,10 @@ public class SettingsController : ControllerBase
     [HttpGet("token-status")]
     public IActionResult GetTokenStatus()
     {
-        return Ok(new { isConfigured = _userLookupService.IsTokenConfigured() });
+        return Ok(new { 
+            isConfigured = _userLookupService.IsConfigured(),
+            settings = _userLookupService.GetCurrentSettings()
+        });
     }
 
     /// <summary>
@@ -34,21 +37,27 @@ public class SettingsController : ControllerBase
         {
             return BadRequest(new { message = "Token is required." });
         }
+        if (string.IsNullOrWhiteSpace(request.BaseUrl))
+        {
+            return BadRequest(new { message = "Base URL is required." });
+        }
 
-        bool isValid = await _userLookupService.ValidateAndSetTokenAsync(request.Token);
+        bool isValid = await _userLookupService.ValidateAndSetSettingsAsync(request.BaseUrl, request.Token, request.RefreshIntervalMinutes);
 
         if (isValid)
         {
-            return Ok(new { message = "Token verified and saved successfully." });
+            return Ok(new { message = "Settings verified and saved successfully." });
         }
         else
         {
-            return BadRequest(new { message = "Invalid Token or unable to connect to the Aeriez API." });
+            return BadRequest(new { message = "Invalid Settings or unable to connect to the Aeriez API." });
         }
     }
 }
 
 public class TokenRequest
 {
+    public string BaseUrl { get; set; } = string.Empty;
     public string Token { get; set; } = string.Empty;
+    public int RefreshIntervalMinutes { get; set; } = 30;
 }

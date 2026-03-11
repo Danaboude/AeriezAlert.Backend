@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("AeriezAlert.Backend")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+288f736ccf3a12907f56671700b9573c2d29b137")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+2328f205eafbbc19346149c622d16b553b3267d5")]
 [assembly: System.Reflection.AssemblyProductAttribute("AeriezAlert.Backend")]
 [assembly: System.Reflection.AssemblyTitleAttribute("AeriezAlert.Backend")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
