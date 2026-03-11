@@ -1,3 +1,3 @@
 ﻿<Project>
-  <Import Project="..\build\AeriezAlert.Backend.props" />
+  <Import Project="../build/AeriezAlert.Backend.props" />
 </Project>

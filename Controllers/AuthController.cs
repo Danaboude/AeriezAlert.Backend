@@ -9,58 +9,49 @@ namespace AeriezAlert.Backend.Controllers;
 public class AuthController : ControllerBase
 {
     private readonly PhoneNotificationService _phoneNotificationService;
+    private readonly UserLookupService _userLookupService;
+    private readonly ILogger<AuthController> _logger;
 
-    public AuthController(PhoneNotificationService phoneNotificationService, UserLookupService userLookupService)
+    public AuthController(
+        PhoneNotificationService phoneNotificationService, 
+        UserLookupService userLookupService,
+        ILogger<AuthController> logger)
     {
         _phoneNotificationService = phoneNotificationService;
-        
-        // Register mock users from the lookup service into the notification service so they appear "known"
-        foreach(var user in userLookupService.GetAllUsers())
-        {
-             if(!string.IsNullOrEmpty(user.Email)) _phoneNotificationService.RegisterUser(user.Email);
-             if(!string.IsNullOrEmpty(user.PhoneNumber)) _phoneNotificationService.RegisterUser(user.PhoneNumber);
-        }
+        _userLookupService = userLookupService;
+        _logger = logger;
     }
 
-    [HttpGet("users")]
-    public IActionResult GetAllUsers([FromServices] UserLookupService userLookupService)
-    {
-        return Ok(userLookupService.GetAllUsers());
-    }
-
+    /// <summary>
+    /// Authenticates a user by email or phone number
+    /// Triggers registration of the user as Active
+    /// </summary>
     [HttpPost("login")]
-    public IActionResult Login([FromBody] LoginRequest request, [FromServices] UserLookupService userLookupService)
+    public IActionResult Login([FromBody] LoginRequest request)
     {
         if (string.IsNullOrWhiteSpace(request.Identifier))
         {
             return BadRequest("Identifier is required.");
         }
 
-        // Validate existence
-        var isEmail = request.Identifier.Contains("@");
-        var existingUser = isEmail 
-            ? userLookupService.GetUserByEmail(request.Identifier) 
-            : userLookupService.GetUserByPhone(request.Identifier);
-
-        if (existingUser == null)
-        {
-             return NotFound("User does not exist in the database.");
-        }
-
-        // Register the user as "connected" or "known"
+        // Register the user as "active" in our lookup service
+        _userLookupService.RegisterActiveUser(request.Identifier);
+        
+        // Also register with phone notification service if needed
         _phoneNotificationService.RegisterUser(request.Identifier);
 
-        // Return a simple success or the user object (mocked)
-        // For compatibility with frontend that expects a User object, we return a mock one.
-        var user = new User 
-        { 
-            // Map Identifier to UserId as a display name equivalent
-            UserId = existingUser.UserId, 
-            Email = existingUser.Email,
-            PhoneNumber = existingUser.PhoneNumber
-        };
-        
-        return Ok(user);
+        _logger.LogInformation("User logged in (registered active): {Identifier}", request.Identifier);
+
+        return Ok(new { Message = "User registered as active" });
+    }
+
+    /// <summary>
+    /// Gets the list of valid users loaded from the API
+    /// </summary>
+    [HttpGet("users")]
+    public IActionResult GetUsers()
+    {
+        return Ok(_userLookupService.GetValidUsers());
     }
 }
 
