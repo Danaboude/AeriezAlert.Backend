@@ -130,6 +130,14 @@ public class UserLookupService
                     await File.WriteAllTextAsync(SettingsFile, encrypted);
                     _logger.LogInformation("[UserLookup] New API Settings verified and saved securely.");
                     
+                    var contentType = response.Content.Headers.ContentType?.MediaType;
+                    if (contentType != null && !contentType.Contains("json", StringComparison.OrdinalIgnoreCase))
+                    {
+                        _logger.LogWarning($"[UserLookup] Expected JSON but received {contentType}. The token might be unauthorized (redirected to login).");
+                        _httpClient.DefaultRequestHeaders.Authorization = originalAuth;
+                        return false;
+                    }
+
                     var json = await response.Content.ReadAsStringAsync();
                     var result = JsonSerializer.Deserialize<List<PhonesPings>>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
                    
@@ -172,6 +180,13 @@ public class UserLookupService
             var response = await _httpClient.GetAsync($"{baseUrl}open-api/users/notifications");
             if (response.IsSuccessStatusCode)
             {
+                var contentType = response.Content.Headers.ContentType?.MediaType;
+                if (contentType != null && !contentType.Contains("json", StringComparison.OrdinalIgnoreCase))
+                {
+                    _logger.LogWarning($"[UserLookup] Sync failed due to HTML redirect. Token may be expired.");
+                    return;
+                }
+
                 var json = await response.Content.ReadAsStringAsync();
                 var result = JsonSerializer.Deserialize<List<PhonesPings>>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
                 
@@ -389,6 +404,13 @@ public class UserLookupService
             
             if (response.IsSuccessStatusCode)
             {
+                 var contentType = response.Content.Headers.ContentType?.MediaType;
+                 if (contentType != null && !contentType.Contains("json", StringComparison.OrdinalIgnoreCase))
+                 {
+                     _logger.LogWarning($"[UserLookup] Fetch notifications failed due to HTML redirect. Token may be invalid.");
+                     return new PhoneWithNotificationResult();
+                 }
+
                  var json = await response.Content.ReadAsStringAsync();
                  return JsonSerializer.Deserialize<PhoneWithNotificationResult>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ?? new PhoneWithNotificationResult();
             }
