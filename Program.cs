@@ -20,11 +20,16 @@ builder.Services.Configure<AeriezAlert.Backend.Models.AeriezApiSettings>(
     builder.Configuration.GetSection("AeriezApi"));
 
 // Register HttpClient for API calls
-builder.Services.AddHttpClient<UserLookupService>(client => 
-{
-    client.DefaultRequestHeaders.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36 AeriezBackend/1.0");
-    client.DefaultRequestHeaders.Add("Accept", "application/json");
-});
+builder.Services.AddHttpClient<UserLookupService>()
+    .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
+    {
+        AllowAutoRedirect = false
+    })
+    .ConfigureHttpClient(client => 
+    {
+        client.DefaultRequestHeaders.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36 AeriezBackend/1.0");
+        client.DefaultRequestHeaders.Add("Accept", "application/json");
+    });
 
 // Register Custom Services
 builder.Services.AddSingleton<MqttService>();

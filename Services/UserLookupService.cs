@@ -160,6 +160,15 @@ public class UserLookupService
                    }
                    return true;
               }
+              else
+              {
+                  _logger.LogWarning($"[UserLookup] Validation failed. Status: {response.StatusCode}. Location header: {response.Headers.Location}");
+                  if ((int)response.StatusCode >= 300 && (int)response.StatusCode < 400)
+                  {
+                      var body = await response.Content.ReadAsStringAsync();
+                      _logger.LogWarning($"[UserLookup] Redirect Body: {body.Substring(0, Math.Min(body.Length, 300))}");
+                  }
+              }
          }
          catch(Exception ex)
          {
@@ -215,7 +224,7 @@ public class UserLookupService
             }
             else
             {
-                _logger.LogWarning($"[UserLookup] Failed to sync users. Status: {response.StatusCode}");
+                _logger.LogWarning($"[UserLookup] Failed to sync users. Status: {response.StatusCode}. Location header: {response.Headers.Location}");
             }
         }
         catch (Exception ex)
@@ -419,7 +428,7 @@ public class UserLookupService
             }
             else
             {
-                 _logger.LogWarning($"[UserLookup] Failed to fetch notifications. Status: {response.StatusCode}");
+                 _logger.LogWarning($"[UserLookup] Failed to fetch notifications. Status: {response.StatusCode}. Location header: {response.Headers.Location}");
             }
         }
         catch(Exception ex)
