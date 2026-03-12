@@ -20,7 +20,7 @@ builder.Services.Configure<AeriezAlert.Backend.Models.AeriezApiSettings>(
     builder.Configuration.GetSection("AeriezApi"));
 
 // Register HttpClient for API calls
-builder.Services.AddHttpClient<UserLookupService>()
+builder.Services.AddHttpClient("AeriezClient")
     .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
     {
         AllowAutoRedirect = false

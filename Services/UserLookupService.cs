@@ -42,12 +42,12 @@ public class UserLookupService
     public event Action? OnUserActivityDetected;
 
     public UserLookupService(
-        HttpClient httpClient,
+        IHttpClientFactory httpClientFactory,
         IOptions<AeriezApiSettings> settings,
         ILogger<UserLookupService> logger,
         IDataProtectionProvider dataProtectionProvider)
     {
-        _httpClient = httpClient;
+        _httpClient = httpClientFactory.CreateClient("AeriezClient");
         _settings = settings.Value;
         _logger = logger;
         _protector = dataProtectionProvider.CreateProtector("AeriezAlert.ApiTokenProtector");
@@ -95,8 +95,7 @@ public class UserLookupService
 
     private void SetHttpClientToken(string token)
     {
-         _httpClient.DefaultRequestHeaders.Remove("Authorization");
-         _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {token}");
+         _httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token.Trim());
     }
 
     public bool IsConfigured()
@@ -162,12 +161,8 @@ public class UserLookupService
               }
               else
               {
-                  _logger.LogWarning($"[UserLookup] Validation failed. Status: {response.StatusCode}. Location header: {response.Headers.Location}");
-                  if ((int)response.StatusCode >= 300 && (int)response.StatusCode < 400)
-                  {
-                      var body = await response.Content.ReadAsStringAsync();
-                      _logger.LogWarning($"[UserLookup] Redirect Body: {body.Substring(0, Math.Min(body.Length, 300))}");
-                  }
+                  var body = await response.Content.ReadAsStringAsync();
+                  _logger.LogWarning($"[UserLookup] Validation failed. Status: {response.StatusCode}. Location header: {response.Headers.Location}. Body: {body}");
               }
          }
          catch(Exception ex)
@@ -224,7 +219,8 @@ public class UserLookupService
             }
             else
             {
-                _logger.LogWarning($"[UserLookup] Failed to sync users. Status: {response.StatusCode}. Location header: {response.Headers.Location}");
+                var body = await response.Content.ReadAsStringAsync();
+                _logger.LogWarning($"[UserLookup] Failed to sync users. Status: {response.StatusCode}. Location header: {response.Headers.Location}. Body: {body}");
             }
         }
         catch (Exception ex)
@@ -428,7 +424,8 @@ public class UserLookupService
             }
             else
             {
-                 _logger.LogWarning($"[UserLookup] Failed to fetch notifications. Status: {response.StatusCode}. Location header: {response.Headers.Location}");
+                 var body = await response.Content.ReadAsStringAsync();
+                 _logger.LogWarning($"[UserLookup] Failed to fetch notifications. Status: {response.StatusCode}. Location header: {response.Headers.Location}. Body: {body}");
             }
         }
         catch(Exception ex)
