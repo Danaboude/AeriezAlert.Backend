@@ -133,7 +133,8 @@ public class UserLookupService
                     var contentType = response.Content.Headers.ContentType?.MediaType;
                     if (contentType != null && !contentType.Contains("json", StringComparison.OrdinalIgnoreCase))
                     {
-                        _logger.LogWarning($"[UserLookup] Expected JSON but received {contentType}. The token might be unauthorized (redirected to login).");
+                        var body = await response.Content.ReadAsStringAsync();
+                        _logger.LogWarning($"[UserLookup] Expected JSON but received {contentType}. Body preview: {body.Substring(0, Math.Min(body.Length, 300))}");
                         _httpClient.DefaultRequestHeaders.Authorization = originalAuth;
                         return false;
                     }
@@ -183,7 +184,8 @@ public class UserLookupService
                 var contentType = response.Content.Headers.ContentType?.MediaType;
                 if (contentType != null && !contentType.Contains("json", StringComparison.OrdinalIgnoreCase))
                 {
-                    _logger.LogWarning($"[UserLookup] Sync failed due to HTML redirect. Token may be expired.");
+                    var body = await response.Content.ReadAsStringAsync();
+                    _logger.LogWarning($"[UserLookup] Sync failed due to non-JSON response ({contentType}). Body preview: {body.Substring(0, Math.Min(body.Length, 300))}");
                     return;
                 }
 
@@ -407,7 +409,8 @@ public class UserLookupService
                  var contentType = response.Content.Headers.ContentType?.MediaType;
                  if (contentType != null && !contentType.Contains("json", StringComparison.OrdinalIgnoreCase))
                  {
-                     _logger.LogWarning($"[UserLookup] Fetch notifications failed due to HTML redirect. Token may be invalid.");
+                     var body = await response.Content.ReadAsStringAsync();
+                     _logger.LogWarning($"[UserLookup] Fetch notifications failed due to non-JSON response ({contentType}). Body preview: {body.Substring(0, Math.Min(body.Length, 300))}");
                      return new PhoneWithNotificationResult();
                  }
 
