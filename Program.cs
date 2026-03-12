@@ -15,9 +15,9 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddDataProtection();
 
-// Configure Aeriez API settings from appsettings.json
+// Configure Aeriez API settings from root configuration
 builder.Services.Configure<AeriezAlert.Backend.Models.AeriezApiSettings>(
-    builder.Configuration.GetSection("AeriezApi"));
+    builder.Configuration);
 
 // Register HttpClient for API calls
 builder.Services.AddHttpClient("AeriezClient")
